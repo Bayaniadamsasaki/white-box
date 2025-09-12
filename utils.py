@@ -1,0 +1,538 @@
+import os
+import requests 
+import json 
+import subprocess 
+from dotenv import load_dotenv
+import re
+import time
+import random
+
+def escape_markdown(text):
+    escape_chars = r'\_*[]()~`>#+-=|{}.!'
+    return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
+
+def escape_markdown_v2(text):
+    escape_chars = r'\_*[]()~`>#+-=|{}.!'
+    return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
+load_dotenv()
+
+class Colors:
+    
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+def print_success(message):
+    print(f"{Colors.OKGREEN}[+] {message}{Colors.ENDC}")
+
+def print_warning(message):
+    print(f"{Colors.WARNING}[!] {message}{Colors.ENDC}")
+
+def print_danger(message):
+    print(f"{Colors.FAIL}[-] {message}{Colors.ENDC}")
+
+def print_info(message):
+    print(f"{Colors.OKBLUE}[*] {message}{Colors.ENDC}")
+
+def print_header(message, char="-", color_code=Colors.HEADER):
+    print(f"{color_code}{Colors.BOLD}\n{char*3} {message} {char*3}{Colors.ENDC}")
+
+def capture_command_output(command_input, test_description, suppress_output=False, shell=False):
+    captured_output_lines = []
+    command_to_log = ""
+    if isinstance(command_input, list):
+        command_to_log = ' '.join(command_input)
+        command_to_log = command_input
+
+    if not suppress_output:
+        print_info(f"Menjalankan tes: {test_description} (Perintah: '{command_to_log}')")
+    
+    captured_output_lines.append(f"Test: {test_description} (Cmd: '{command_to_log}')")
+
+    try:
+        if shell and isinstance(command_input, list):
+            command_input = ' '.join(command_input)
+        
+        result = subprocess.run(command_input, capture_output=True, text=True, check=False, timeout=20, shell=shell)
+        
+        if result.returncode == 0:
+            if not suppress_output:
+                print_success(f"Tes '{test_description}' berhasil.")
+                
+            if result.stdout and result.stdout.strip():
+                for line in result.stdout.strip().splitlines():
+                    captured_output_lines.append(f"    {line}")
+            elif not result.stdout or not result.stdout.strip():
+                 captured_output_lines.append("    (Tidak ada output standar)")
+        else:
+            if not suppress_output:
+                print_danger(f"Tes '{test_description}' gagal dengan kode: {result.returncode}")
+            
+            if result.stdout and result.stdout.strip():
+                if not suppress_output:
+                    print_warning("    Output standar (saat gagal):")
+                for line in result.stdout.strip().splitlines(): 
+                    if not suppress_output: print(f"        {line}")
+                    captured_output_lines.append(f"        [STDOUT] {line}")
+            
+            if result.stderr and result.stderr.strip():
+                if not suppress_output:
+                    print_warning("    Output error:")
+                for line in result.stderr.strip().splitlines(): 
+                    if not suppress_output: print(f"        {line}")
+                    captured_output_lines.append(f"        [STDERR] {line}")
+                
+    except subprocess.TimeoutExpired:
+        err_msg = f"Timeout saat menjalankan perintah untuk tes '{test_description}'."
+        if not suppress_output: print_danger(err_msg)
+        captured_output_lines.append(err_msg)
+    except FileNotFoundError:
+        cmd_name = command_input if shell else command_input[0]
+        err_msg = f"Perintah '{cmd_name}' tidak ditemukan untuk tes '{test_description}'."
+        if not suppress_output: print_danger(err_msg)
+        captured_output_lines.append(err_msg)
+    except Exception as e:
+        err_msg = f"Kesalahan tidak terduga saat menjalankan perintah untuk tes '{test_description}': {e}"
+        if not suppress_output: print_danger(err_msg)
+        captured_output_lines.append(err_msg)
+    
+    final_output_str = "\n".join(captured_output_lines)
+    return final_output_str
+
+def capture_read_file_content(file_path, test_description, suppress_output=False):
+    captured_output_lines = []
+    
+    def log_and_print(message, msg_type="info", to_capture=True, is_content=False):
+        if to_capture:
+            if is_content and message.strip():
+                 for line_content in message.strip().splitlines():
+                    captured_output_lines.append(f"    {line_content}")
+            elif not is_content:
+                 captured_output_lines.append(str(message))
+        
+        if not suppress_output:
+            if msg_type == "info": print_info(message)
+            elif msg_type == "success": print_success(message)
+            elif msg_type == "warning": print_warning(message)
+            elif msg_type == "danger": print_danger(message)
+            elif not is_content : print(str(message))
+
+
+    log_and_print(f"Test: {test_description} (File: {file_path})", "info", to_capture=True)
+    
+    if not suppress_output: print_info(f"Membaca file untuk tes: {test_description} (File: {file_path})")
+
+    if not os.path.isabs(file_path):
+        
+        if not suppress_output: print_warning(f"Peringatan: Path file '{file_path}' tidak absolut.")
+
+    if os.path.exists(file_path):
+        try:
+            if not os.access(file_path, os.R_OK):
+                 if os.geteuid() != 0:
+                     
+                     if not suppress_output: print_warning(f"Tidak ada izin baca untuk {file_path}. Hasil mungkin tidak lengkap.")
+            
+            with open(file_path, "r", errors='ignore') as f:
+                content = f.read() 
+                if content.strip():
+                    
+                    if not suppress_output: print_success(f"Berhasil membaca file '{file_path}' untuk tes '{test_description}'.")
+                    
+                    log_and_print(content, msg_type="content_internal", to_capture=True, is_content=True)
+                else:
+                    log_and_print(f"File '{file_path}' untuk tes '{test_description}' kosong.", "info", to_capture=True)
+        except Exception as e:
+            err_msg = f"Gagal membaca file '{file_path}' untuk tes '{test_description}': {e}"
+            log_and_print(err_msg, "danger", to_capture=True)
+    else:
+        err_msg = f"File '{file_path}' tidak ditemukan untuk tes '{test_description}'."
+        log_and_print(err_msg, "warning", to_capture=True)
+    
+    return "\n".join(captured_output_lines)
+
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+def send_to_telegram(test_name, result, suggestion):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print_warning("Variabel lingkungan TELEGRAM_BOT_TOKEN atau TELEGRAM_CHAT_ID tidak disetel. Lewati pengiriman ke Telegram.")
+        return
+
+    max_len_part = 1900 
+    truncated_result = result
+    if len(result) > max_len_part:
+        truncated_result = result[:max_len_part] + "\n\\.\\.\\. \\(hasil dipotong\\)"
+    
+    truncated_suggestion = suggestion
+    if len(suggestion) > max_len_part:
+        truncated_suggestion = suggestion[:max_len_part] + "\n\\.\\.\\. \\(saran dipotong\\)"
+
+    message = f"""*Pemeriksaan:* {escape_markdown_v2(test_name)}
+
+*Hasil Test:*
+{escape_markdown_v2(truncated_result)}
+
+*Saran:*
+{escape_markdown_v2(truncated_suggestion)}
+"""
+    
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "MarkdownV2"}
+    
+    try:
+        response = requests.post(url, data=payload, timeout=20)
+        response.raise_for_status()
+        print_info(f"Hasil dan saran test '{test_name}' dikirim ke Telegram.")
+    except requests.exceptions.RequestException as e:
+        if e.response is not None:
+            print_danger(f"Gagal mengirim pesan '{test_name}' ke Telegram. Status: {e.response.status_code}, Response: {e.response.text}")
+        else:
+            print_danger(f"Gagal mengirim pesan '{test_name}' ke Telegram: {e}")
+    except Exception as e:
+        print_danger(f"Terjadi kesalahan tidak terduga saat mengirim pesan ke Telegram untuk '{test_name}': {e}")
+
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_ENDPOINT = os.getenv("GEMINI_API_ENDPOINT", "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent")
+
+# Ollama Configuration
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "deepseek-r1:8b")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+USE_OLLAMA = os.getenv("USE_OLLAMA", "true").lower() == "true"
+
+def get_ollama_suggestion(test_name, raw_output):
+    """Get security analysis from local Ollama model"""
+    if not raw_output or not raw_output.strip():
+        return "Tidak ada output mentah yang dihasilkan oleh tes, jadi tidak ada saran yang diminta dari AI."
+
+    prompt = f"""Sebagai security expert, analisis hasil tes keamanan berikut untuk '{test_name}' dan berikan saran yang EFISIEN, FOKUS, dan LENGKAP.
+
+Berikan respons dalam format berikut (maksimal 800 kata, minimum 200 kata):
+
+**STATUS:** [AMAN/PERLU PERHATIAN/BERBAHAYA]
+
+**TEMUAN:**
+• [Poin kunci 1]
+• [Poin kunci 2]
+• [Poin kunci 3]
+
+**REKOMENDASI:**
+1. [Aksi utama 1]
+2. [Aksi utama 2]
+3. [Aksi utama 3]
+
+**PRIORITAS:** [Urutan implementasi]
+
+WAJIB: Respons harus LENGKAP sampai selesai, tidak boleh terpotong, dan fokus pada hal penting saja.
+
+Nama Tes: {test_name}
+Hasil Tes:
+{raw_output}
+
+Analisis (lengkap sampai selesai):"""
+
+    try:
+        # Check if Ollama is running with quick timeout
+        print_info(f"Checking Ollama connection...")
+        health_response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=3)
+        if health_response.status_code != 200:
+            print_warning("Ollama tidak dapat diakses. Pastikan Ollama berjalan di localhost:11434")
+            return f"AI Analysis tidak tersedia (Ollama offline). Manual review diperlukan untuk '{test_name}'."
+        
+        # Prepare request for Ollama with lighter, faster parameters
+        data = {
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0.3,      # Slightly higher for faster responses
+                "top_p": 0.9,           # Standard setting
+                "num_predict": 800,     # Reduced for faster processing
+                "num_ctx": 2048,        # Smaller context for speed
+                "repeat_penalty": 1.1,
+                "seed": 42              # Consistent seed
+            }
+        }
+        
+        print_info(f"Requesting analysis from Ollama model '{OLLAMA_MODEL}'...")
+        print_info("⏳ Please wait... Model is processing (may take 30-120 seconds)")
+        
+        # Use longer timeout for model inference with lighter parameters
+        response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json=data, timeout=300)
+        response.raise_for_status()
+        
+        response_json = response.json()
+        if 'response' in response_json:
+            suggestion = response_json['response'].strip()
+            
+            # Clean up DeepSeek-R1 thinking tags and process more thoroughly
+            if '<think>' in suggestion:
+                # Remove all thinking content between <think> and </think>
+                import re
+                suggestion = re.sub(r'<think>.*?</think>', '', suggestion, flags=re.DOTALL)
+                suggestion = suggestion.strip()
+                
+                # Also remove any standalone <think> or </think> tags
+                suggestion = re.sub(r'</?think>', '', suggestion)
+                suggestion = suggestion.strip()
+                
+                # Remove any orphaned thinking content that starts mid-sentence
+                lines = suggestion.split('\n')
+                cleaned_lines = []
+                for line in lines:
+                    # Skip lines that look like thinking process
+                    if any(phrase in line.lower() for phrase in [
+                        'baik, saya akan', 'mari kita', 'pertama-tama', 
+                        'sekarang mari', 'analisis keamanan lanjutan',
+                        'mari kita lanjutkan', 'konfigurasi ssh (selengkapnya)'
+                    ]):
+                        continue
+                    if line.strip():
+                        cleaned_lines.append(line)
+                
+                suggestion = '\n'.join(cleaned_lines).strip()
+            
+            # Check if response seems truncated with better detection
+            if suggestion:
+                # More accurate truncation detection
+                suggestion_length = len(suggestion)
+                words = suggestion.split()
+                
+                # Check for various truncation indicators
+                is_truncated = (
+                    suggestion.endswith('...') or 
+                    suggestion.endswith('[...') or
+                    suggestion.endswith('ter') or  
+                    suggestion.endswith('men') or
+                    suggestion.endswith('kan') or
+                    suggestion.endswith('dan') or
+                    suggestion.endswith('yang') or
+                    suggestion.endswith(',') or
+                    suggestion.endswith('un') or
+                    suggestion.endswith('se') or
+                    # Check if doesn't end with proper punctuation
+                    (not suggestion.endswith(('.', '!', '?', ':', ')')) and suggestion_length > 100) or
+                    # Check if too short (likely truncated)
+                    suggestion_length < 200 or
+                    # Check if ends abruptly without proper format completion
+                    ('**PRIORITAS:**' in suggestion and suggestion.count('**') < 6) or
+                    ('**REKOMENDASI:**' in suggestion and not suggestion.strip().endswith(('3', '.'))) or
+                    # Check if last word is incomplete (common in Indonesian)
+                    (len(words) > 0 and len(words[-1]) < 3 and words[-1].isalpha())
+                )
+                
+                if is_truncated:
+                    print_warning("⚠️ Response appears truncated, requesting completion...")
+                    
+                    # More focused continuation request
+                    continue_prompt = f"""LANJUTKAN dan SELESAIKAN analisis keamanan yang belum lengkap.
+
+Analisis yang sudah ada:
+{suggestion}
+
+Tugas: Lanjutkan dari bagian yang terpotong dan selesaikan format berikut secara LENGKAP:
+- Jika **REKOMENDASI:** belum lengkap, lengkapi dengan poin-poin tersisa
+- Jika **PRIORITAS:** belum ada, tambahkan bagian ini
+- Pastikan respons berakhir dengan titik atau tanda baca yang tepat
+
+Lanjutkan sekarang (harus selesai):"""
+                    
+                    continue_data = {
+                        "model": OLLAMA_MODEL,
+                        "prompt": continue_prompt,
+                        "stream": False,
+                        "options": {
+                            "temperature": 0.3,      
+                            "top_p": 0.9,
+                            "num_predict": 400,      # Shorter for faster continuation
+                            "num_ctx": 2048,
+                            "repeat_penalty": 1.1
+                        }
+                    }
+                    
+                    try:
+                        continue_response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", 
+                                                        json=continue_data, timeout=90)
+                        if continue_response.status_code == 200:
+                            continue_json = continue_response.json()
+                            if 'response' in continue_json:
+                                continuation = continue_json['response'].strip()
+                                
+                                # Clean continuation more thoroughly
+                                if '<think>' in continuation:
+                                    import re
+                                    continuation = re.sub(r'<think>.*?</think>', '', continuation, flags=re.DOTALL)
+                                    continuation = re.sub(r'</?think>', '', continuation)
+                                    continuation = continuation.strip()
+                                    
+                                    # Remove thinking-style content
+                                    lines = continuation.split('\n')
+                                    cleaned_lines = []
+                                    for line in lines:
+                                        if any(phrase in line.lower() for phrase in [
+                                            'baik, saya akan', 'mari kita', 'pertama-tama',
+                                            'sekarang mari', 'analisis keamanan lanjutan',
+                                            'mari kita lanjutkan'
+                                        ]):
+                                            continue
+                                        if line.strip():
+                                            cleaned_lines.append(line)
+                                    continuation = '\n'.join(cleaned_lines).strip()
+                                
+                                if continuation and len(continuation) > 30:
+                                    suggestion = suggestion + "\n\n" + continuation
+                                    print_success("✅ Got continuation response")
+                    except Exception as e:
+                        print_warning(f"Could not get continuation: {e}")
+                
+                print_success("✅ AI analysis completed successfully")
+                print_info(f"📊 Response length: {len(suggestion)} characters")
+                return suggestion
+            else:
+                print_warning("⚠️ Ollama returned empty response after cleaning")
+                return f"AI analysis tidak menghasilkan output untuk '{test_name}'. Review manual diperlukan."
+        else:
+            print_warning("⚠️ Unexpected Ollama response format")
+            return f"AI analysis gagal (format response tidak valid) untuk '{test_name}'"
+            
+    except requests.exceptions.Timeout:
+        print_warning(f"⏰ Ollama timeout untuk '{test_name}' - Model mungkin sedang loading")
+        return f"AI analysis timeout. Model '{OLLAMA_MODEL}' mungkin sedang loading. Coba lagi dalam beberapa menit atau review manual hasil '{test_name}'."
+    except requests.exceptions.ConnectionError:
+        print_warning(f"🔌 Gagal terhubung ke Ollama untuk '{test_name}'")
+        return f"Ollama tidak berjalan. Untuk menggunakan AI analysis:\n1. Jalankan: ollama serve\n2. Pastikan model tersedia: ollama list\n3. Atau disable AI: set USE_OLLAMA=false di .env"
+    except requests.exceptions.RequestException as e:
+        print_warning(f"📡 Error komunikasi Ollama untuk '{test_name}': {e}")
+        return f"Error komunikasi dengan Ollama: {e}. Review manual diperlukan."
+    except Exception as e:
+        print_warning(f"❌ Error tidak terduga dengan Ollama untuk '{test_name}': {e}")
+        return f"Error AI analysis: {e}. Review manual hasil '{test_name}' diperlukan."
+
+def get_gemini_suggestion(test_name, raw_output):
+    """Get security analysis - automatically chooses between Ollama and Gemini"""
+    # Prioritize Ollama if configured
+    if USE_OLLAMA or not GEMINI_API_KEY:
+        return get_ollama_suggestion(test_name, raw_output)
+    
+    # Fallback to original Gemini implementation
+    if not GEMINI_API_KEY:
+        print_warning("Variabel lingkungan GEMINI_API_KEY tidak disetel. Menggunakan saran default.")
+        return "Tidak ada saran dari AI (API Key tidak tersedia)."
+    if not raw_output or not raw_output.strip():
+        return "Tidak ada output mentah yang dihasilkan oleh tes, jadi tidak ada saran yang diminta dari AI."
+
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "contents": [{
+            "parts": [{
+                "text": f"""Analisis hasil tes keamanan berikut untuk '{test_name}' pada server Ubuntu. Berikan saran perbaikan yang konkret dan actionable jika ada masalah yang teridentifikasi. Jika tidak ada masalah signifikan, konfirmasi bahwa konfigurasi tampak baik dari perspektif hasil tes ini. Fokus pada keamanan dan best practice. Jangan ada tanda baca yang tidak jelas agar bisa dikirim dengan benar ke Telegram buat saran yang singkat saja
+
+Nama Tes: {test_name}
+
+Hasil Tes Mentah:
+{raw_output}
+"""
+            }]
+        }],
+        "generationConfig": {
+          "temperature": 0.7,
+          "topK": 1,
+          "topP": 1,
+          "maxOutputTokens": 2048,
+        },
+        "safetySettings": [
+          { "category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE" },
+          { "category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE" },
+          { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+          { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"}
+        ]
+    }
+    
+    max_attempts = 3
+    current_attempt = 0
+    result_from_api = None
+
+    while current_attempt < max_attempts:
+        try:
+            full_url = f"{GEMINI_API_ENDPOINT}?key={GEMINI_API_KEY}"
+            response = requests.post(full_url, headers=headers, json=data, timeout=60) 
+            response.raise_for_status()
+            response_json = response.json()
+            if 'candidates' in response_json and response_json['candidates'] and \
+               'content' in response_json['candidates'][0] and \
+               'parts' in response_json['candidates'][0]['content'] and \
+               response_json['candidates'][0]['content']['parts'] and \
+               'text' in response_json['candidates'][0]['content']['parts'][0]:
+                gemini_suggestion = response_json['candidates'][0]['content']['parts'][0]['text']
+                return gemini_suggestion.strip()
+            elif 'error' in response_json:
+                error_details = response_json['error']
+                print_danger(f"Gemini API mengembalikan error untuk '{test_name}': {error_details.get('message', 'Error tidak diketahui')}")
+                return f"Error dari Gemini API: {error_details.get('message', 'Silakan cek log untuk detail.')}"
+            else:
+                print_danger(f"Gagal mem-parse respons dari Gemini API untuk '{test_name}'. Respons tidak memiliki struktur yang diharapkan.")
+                return "Gagal mem-parse respons Gemini API (struktur tidak dikenali)."
+
+        except requests.exceptions.Timeout:
+            print_danger(f"Timeout saat menghubungi Gemini API untuk '{test_name}'.")
+            return "Gagal menghubungi Gemini API (timeout)."
+        except requests.exceptions.RequestException as e:
+            print_danger(f"Gagal mendapatkan saran dari Gemini API untuk '{test_name}': {e}")
+            return f"Gagal menghubungi Gemini API: {e}"
+        except (KeyError, IndexError, TypeError) as e:
+            print_danger(f"Gagal mem-parse respons dari Gemini API untuk '{test_name}': {e}")
+            return "Gagal mem-parse respons Gemini API (kesalahan parsing)."
+        except Exception as e:
+            print_danger(f"Terjadi kesalahan tidak terduga saat menghubungi Gemini API untuk '{test_name}': {e}")
+            return f"Kesalahan tidak terduga dengan Gemini API: {e}"
+
+if __name__ == '__main__':
+    print_header("Contoh Penggunaan Utilitas Cetak")
+    print_success("Ini adalah pesan sukses.")
+    print_warning("Ini adalah pesan peringatan.")
+    print_danger("Ini adalah pesan bahaya/error.")
+    print_info("Ini adalah pesan informasi.")
+
+    test_name_example = "Contoh Test Keamanan Internal"
+    print_header("Contoh capture_command_output (normal)")
+    cmd_output_normal = capture_command_output(["echo", "Ini output sukses"], "Tes Echo Sukses")
+    print_info(f"Captured (untuk log/telegram):\n{cmd_output_normal}\n")
+
+    print_header("Contoh capture_command_output (gagal)")
+    cmd_output_gagal = capture_command_output(["ls", "/folderTidakAda"], "Tes ls Gagal")
+    print_info(f"Captured (untuk log/telegram):\n{cmd_output_gagal}\n")
+
+    print_header("Contoh capture_command_output (sukses tanpa output)")
+
+    cmd_output_no_stdout = capture_command_output(["true"], "Tes Perintah True")
+    print_info(f"Captured (untuk log/telegram):\n{cmd_output_no_stdout}\n")
+
+    dummy_file_path = "dummy_test_file_utils.txt"
+    print_header("Contoh capture_read_file_content (file ada)")
+    with open(dummy_file_path, "w") as df:
+        df.write("Baris pertama.\nBaris kedua.")
+    file_content_normal = capture_read_file_content(dummy_file_path, "Tes Baca File Ada")
+    print_info(f"Captured (untuk log/telegram):\n{file_content_normal}\n")
+    os.remove(dummy_file_path)
+
+    print_header("Contoh capture_read_file_content (file kosong)")
+    with open(dummy_file_path, "w") as df:
+        df.write("")
+    file_content_empty = capture_read_file_content(dummy_file_path, "Tes Baca File Kosong")
+    print_info(f"Captured (untuk log/telegram):\n{file_content_empty}\n")
+    os.remove(dummy_file_path)
+    
+    print_header("Contoh capture_read_file_content (file tidak ada)")
+    file_content_not_found = capture_read_file_content("file_tidak_ada_sama_sekali.txt", "Tes Baca File Tidak Ada")
+    print_info(f"Captured (untuk log/telegram):\n{file_content_not_found}\n")
+    gemini_advice = get_gemini_suggestion(test_name_example, cmd_output_normal)
+
+    send_to_telegram(test_name_example, cmd_output_normal, gemini_advice)
