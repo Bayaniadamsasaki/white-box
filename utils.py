@@ -191,6 +191,15 @@ def send_to_telegram(test_name, result, suggestion):
         response = requests.post(url, data=payload, timeout=20)
         response.raise_for_status()
         print_info(f"Hasil dan saran test '{test_name}' dikirim ke Telegram.")
+    except KeyboardInterrupt:
+        print_warning(f"🛑 Pengiriman Telegram dibatalkan untuk '{test_name}'")
+        return
+    except requests.exceptions.Timeout:
+        print_warning(f"⏰ Timeout saat mengirim '{test_name}' ke Telegram")
+        return
+    except requests.exceptions.ConnectionError:
+        print_warning(f"🔌 Koneksi Telegram gagal untuk '{test_name}'")
+        return
     except requests.exceptions.RequestException as e:
         if e.response is not None:
             print_danger(f"Gagal mengirim pesan '{test_name}' ke Telegram. Status: {e.response.status_code}, Response: {e.response.text}")
@@ -213,31 +222,14 @@ def get_ollama_suggestion(test_name, raw_output):
     if not raw_output or not raw_output.strip():
         return "Tidak ada output mentah yang dihasilkan oleh tes, jadi tidak ada saran yang diminta dari AI."
 
-    prompt = f"""Sebagai security expert, analisis hasil tes keamanan berikut untuk '{test_name}' dan berikan saran yang EFISIEN, FOKUS, dan LENGKAP.
+    prompt = f"""Analisis '{test_name}':
+Status: [AMAN/BAHAYA]
+Masalah: [apa yang ditemukan]
+Saran: [bagaimana mengatasinya]
 
-Berikan respons dalam format berikut (maksimal 800 kata, minimum 200 kata):
+Data: {raw_output[:200]}
 
-**STATUS:** [AMAN/PERLU PERHATIAN/BERBAHAYA]
-
-**TEMUAN:**
-• [Poin kunci 1]
-• [Poin kunci 2]
-• [Poin kunci 3]
-
-**REKOMENDASI:**
-1. [Aksi utama 1]
-2. [Aksi utama 2]
-3. [Aksi utama 3]
-
-**PRIORITAS:** [Urutan implementasi]
-
-WAJIB: Respons harus LENGKAP sampai selesai, tidak boleh terpotong, dan fokus pada hal penting saja.
-
-Nama Tes: {test_name}
-Hasil Tes:
-{raw_output}
-
-Analisis (lengkap sampai selesai):"""
+Jawaban:"""
 
     try:
         # Check if Ollama is running with quick timeout
@@ -247,58 +239,80 @@ Analisis (lengkap sampai selesai):"""
             print_warning("Ollama tidak dapat diakses. Pastikan Ollama berjalan di localhost:11434")
             return f"AI Analysis tidak tersedia (Ollama offline). Manual review diperlukan untuk '{test_name}'."
         
-        # Prepare request for Ollama with lighter, faster parameters
+        # Prepare request for Ollama with ultra-light parameters for speed
         data = {
             "model": OLLAMA_MODEL,
             "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature": 0.3,      # Slightly higher for faster responses
-                "top_p": 0.9,           # Standard setting
-                "num_predict": 800,     # Reduced for faster processing
-                "num_ctx": 2048,        # Smaller context for speed
-                "repeat_penalty": 1.1,
-                "seed": 42              # Consistent seed
+                "temperature": 0.7,      # Higher for faster sampling
+                "num_predict": 300,      # Very small output
+                "num_ctx": 512,          # Minimal context
+                "top_k": 20,             # Very limited choices
+                "top_p": 0.8
             }
         }
         
         print_info(f"Requesting analysis from Ollama model '{OLLAMA_MODEL}'...")
         print_info("⏳ Please wait... Model is processing (may take 30-120 seconds)")
         
-        # Use longer timeout for model inference with lighter parameters
-        response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json=data, timeout=300)
+        # Use longer timeout for model inference with ultra-light parameters
+        response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json=data, timeout=120)
         response.raise_for_status()
         
         response_json = response.json()
         if 'response' in response_json:
             suggestion = response_json['response'].strip()
             
-            # Clean up DeepSeek-R1 thinking tags and process more thoroughly
-            if '<think>' in suggestion:
-                # Remove all thinking content between <think> and </think>
+            # Clean up DeepSeek-R1 thinking content but preserve analysis
+            if any(phrase in suggestion.lower() for phrase in [
+                'hmm', 'okay', 'wait', 'the user wants', 'thinking...'
+            ]):
                 import re
+                
+                # Remove thinking tags
                 suggestion = re.sub(r'<think>.*?</think>', '', suggestion, flags=re.DOTALL)
-                suggestion = suggestion.strip()
-                
-                # Also remove any standalone <think> or </think> tags
                 suggestion = re.sub(r'</?think>', '', suggestion)
-                suggestion = suggestion.strip()
+                suggestion = re.sub(r'Thinking\.\.\..*?done thinking\.', '', suggestion, flags=re.DOTALL)
                 
-                # Remove any orphaned thinking content that starts mid-sentence
+                # Split into lines and filter
                 lines = suggestion.split('\n')
                 cleaned_lines = []
+                
                 for line in lines:
-                    # Skip lines that look like thinking process
-                    if any(phrase in line.lower() for phrase in [
-                        'baik, saya akan', 'mari kita', 'pertama-tama', 
-                        'sekarang mari', 'analisis keamanan lanjutan',
-                        'mari kita lanjutkan', 'konfigurasi ssh (selengkapnya)'
+                    line_clean = line.strip()
+                    if not line_clean:
+                        continue
+                        
+                    # Keep lines that look like actual analysis results
+                    if any(keyword in line for keyword in [
+                        'Status:', 'Masalah:', 'Saran:', 'AMAN', 'BAHAYA', 
+                        'SSH', 'root login', 'password', 'authentication',
+                        'konfigurasi', 'keamanan', 'server'
+                    ]):
+                        cleaned_lines.append(line)
+                        continue
+                    
+                    # Skip obvious thinking lines
+                    line_lower = line.lower()
+                    if any(skip_phrase in line_lower for skip_phrase in [
+                        'hmm', 'okay', 'wait', 'aku melihat', 'aku perlu',
+                        'the user wants', 'user meminta', 'dalam konteks',
+                        'hal-hal yang penting', 'penggunaan algoritma'
                     ]):
                         continue
-                    if line.strip():
+                    
+                    # Keep other substantial lines
+                    if len(line_clean) > 20:
                         cleaned_lines.append(line)
                 
                 suggestion = '\n'.join(cleaned_lines).strip()
+                
+                # If result is too short, create simple fallback
+                if len(suggestion) < 100:
+                    suggestion = f"""Status: PERLU ANALISIS MANUAL
+Masalah: AI analysis menghasilkan output yang perlu dibersihkan
+Saran: Review manual hasil tes untuk mendapatkan insight keamanan yang tepat"""
             
             # Check if response seems truncated with better detection
             if suggestion:
@@ -333,28 +347,20 @@ Analisis (lengkap sampai selesai):"""
                     print_warning("⚠️ Response appears truncated, requesting completion...")
                     
                     # More focused continuation request
-                    continue_prompt = f"""LANJUTKAN dan SELESAIKAN analisis keamanan yang belum lengkap.
+                    continue_prompt = f"""Lanjutkan analisis: {suggestion}
 
-Analisis yang sudah ada:
-{suggestion}
-
-Tugas: Lanjutkan dari bagian yang terpotong dan selesaikan format berikut secara LENGKAP:
-- Jika **REKOMENDASI:** belum lengkap, lengkapi dengan poin-poin tersisa
-- Jika **PRIORITAS:** belum ada, tambahkan bagian ini
-- Pastikan respons berakhir dengan titik atau tanda baca yang tepat
-
-Lanjutkan sekarang (harus selesai):"""
+Lengkapi yang kurang:"""
                     
                     continue_data = {
                         "model": OLLAMA_MODEL,
                         "prompt": continue_prompt,
                         "stream": False,
                         "options": {
-                            "temperature": 0.3,      
-                            "top_p": 0.9,
-                            "num_predict": 400,      # Shorter for faster continuation
-                            "num_ctx": 2048,
-                            "repeat_penalty": 1.1
+                            "temperature": 0.5,      
+                            "top_p": 1.0,
+                            "num_predict": 200,      # Very short for continuation
+                            "num_ctx": 1024,
+                            "top_k": 40
                         }
                     }
                     
@@ -403,18 +409,76 @@ Lanjutkan sekarang (harus selesai):"""
             print_warning("⚠️ Unexpected Ollama response format")
             return f"AI analysis gagal (format response tidak valid) untuk '{test_name}'"
             
+    except KeyboardInterrupt:
+        print_warning(f"🛑 AI analysis dibatalkan oleh user untuk '{test_name}'")
+        return f"""**STATUS:** PERLU REVIEW MANUAL
+
+**TEMUAN:**
+• Analisis AI dibatalkan atau timeout
+• Hasil tes mentah tersedia untuk review manual
+
+**REKOMENDASI:**
+1. Review manual hasil tes: {test_name}
+2. Coba jalankan ulang jika diperlukan
+3. Periksa konfigurasi Ollama jika sering timeout
+
+**PRIORITAS:** Review manual segera diperlukan"""
     except requests.exceptions.Timeout:
         print_warning(f"⏰ Ollama timeout untuk '{test_name}' - Model mungkin sedang loading")
-        return f"AI analysis timeout. Model '{OLLAMA_MODEL}' mungkin sedang loading. Coba lagi dalam beberapa menit atau review manual hasil '{test_name}'."
+        return f"""**STATUS:** TIMEOUT - PERLU REVIEW
+
+**TEMUAN:**
+• AI analysis timeout setelah 60 detik
+• Model mungkin sedang loading atau overloaded
+
+**REKOMENDASI:**
+1. Tunggu beberapa menit lalu coba lagi
+2. Review manual hasil tes sementara
+3. Restart Ollama jika masalah berlanjut
+
+**PRIORITAS:** Manual review sementara, retry AI analysis nanti"""
     except requests.exceptions.ConnectionError:
         print_warning(f"🔌 Gagal terhubung ke Ollama untuk '{test_name}'")
-        return f"Ollama tidak berjalan. Untuk menggunakan AI analysis:\n1. Jalankan: ollama serve\n2. Pastikan model tersedia: ollama list\n3. Atau disable AI: set USE_OLLAMA=false di .env"
+        return f"""**STATUS:** OFFLINE - PERLU REVIEW
+
+**TEMUAN:**
+• Ollama tidak berjalan atau tidak dapat diakses
+• Koneksi ke localhost:11434 gagal
+
+**REKOMENDASI:**
+1. Jalankan: ollama serve
+2. Pastikan model tersedia: ollama list
+3. Atau disable AI: set USE_OLLAMA=false di .env
+
+**PRIORITAS:** Fix Ollama connection atau review manual"""
     except requests.exceptions.RequestException as e:
         print_warning(f"📡 Error komunikasi Ollama untuk '{test_name}': {e}")
-        return f"Error komunikasi dengan Ollama: {e}. Review manual diperlukan."
+        return f"""**STATUS:** ERROR - PERLU REVIEW
+
+**TEMUAN:**
+• Error komunikasi dengan Ollama: {str(e)[:100]}
+• Mungkin ada masalah network atau konfigurasi
+
+**REKOMENDASI:**
+1. Check Ollama status: ollama list
+2. Restart Ollama service
+3. Review manual hasil tes sementara
+
+**PRIORITAS:** Troubleshoot Ollama atau manual review"""
     except Exception as e:
         print_warning(f"❌ Error tidak terduga dengan Ollama untuk '{test_name}': {e}")
-        return f"Error AI analysis: {e}. Review manual hasil '{test_name}' diperlukan."
+        return f"""**STATUS:** UNEXPECTED ERROR - PERLU REVIEW
+
+**TEMUAN:**
+• Error tidak terduga: {str(e)[:100]}
+• Sistem AI mengalami masalah
+
+**REKOMENDASI:**
+1. Review manual hasil tes: {test_name}
+2. Check log sistem untuk detail error
+3. Restart aplikasi jika perlu
+
+**PRIORITAS:** Manual review segera diperlukan"""
 
 def get_gemini_suggestion(test_name, raw_output):
     """Get security analysis - automatically chooses between Ollama and Gemini"""
