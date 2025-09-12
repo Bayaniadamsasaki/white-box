@@ -101,6 +101,40 @@ python start_monitoring.py --continuous
 - 🤖 **Context-aware** - Analisis berdasarkan konteks sistem
 - 🤖 **Privacy-focused** - AI berjalan local, data tidak ke cloud
 
+## 🎮 **Commands Quick Reference**
+
+### **🔍 Main Security Scanning**
+```bash
+python main_scanner.py              # Full security audit (30+ checks)
+python start_monitoring.py --continuous  # 24/7 monitoring mode
+```
+
+### **⚡ Individual Security Checks**
+```bash
+python ssh_checker.py               # SSH configuration security
+python user_group_checker.py        # User & permissions analysis  
+python hardening_checker.py         # System hardening status
+python web_checker.py               # Web services security
+python port_scanner.py              # Open ports scanning
+```
+
+### **🚨 Monitoring Modes**
+```bash
+python start_monitoring.py --continuous    # Continuous monitoring
+python start_monitoring.py --single        # Single scan
+python start_monitoring.py --interval 30   # Custom interval (seconds)
+python start_monitoring.py --verbose       # Detailed logging
+```
+
+### **🤖 AI & Configuration**
+```bash
+ollama serve                        # Start Ollama AI server
+ollama pull deepseek-r1:8b         # Download AI model (5.2GB)
+copy env.example .env               # Setup configuration
+```
+
+📖 **Detailed Commands:** See [COMMANDS_GUIDE.md](COMMANDS_GUIDE.md) for complete command reference
+
 ## 📋 **Cara Penggunaan**
 
 ### **Mode 1: Comprehensive Scan + Monitoring**
