@@ -28,3 +28,14 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+
+# Testing files (development only)
+test_*.py
+*_test.py
+quick_*.py
+attack_simulator.py
+security_config.py
+
+# Empty deployment scripts
+quick_start.sh
+quick_start.bat
