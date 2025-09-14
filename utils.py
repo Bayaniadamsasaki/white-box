@@ -233,6 +233,12 @@ def get_ollama_suggestion(test_name, raw_output):
     if not raw_output or not raw_output.strip():
         return "Tidak ada output mentah yang dihasilkan oleh tes, jadi tidak ada saran yang diminta dari AI."
 
+    # Check if AI is disabled for slow servers
+    disable_ai = os.getenv("DISABLE_AI_ANALYSIS", "false").lower() == "true"
+    if disable_ai:
+        print_info("🔧 AI analysis disabled - using fallback analysis only")
+        return create_fallback_analysis(test_name, raw_output, "AI disabled for server performance")
+
     prompt = f"""Analisis singkat '{test_name}':
 
 Data: {raw_output[:300]}
@@ -289,10 +295,25 @@ Saran: [1 kalimat]"""
         }
         
         print_info(f"Requesting analysis from Ollama model '{OLLAMA_MODEL}'...")
-        print_info("⏳ Fast processing... (max 30 seconds)")
         
-        # Much shorter timeout for server environments
-        response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json=data, timeout=30)
+        # Get configurable timeout for slow servers
+        ai_timeout = int(os.getenv("AI_TIMEOUT", "60"))  # Default 60s, configurable up to 180s
+        print_info(f"⏳ Processing... (max {ai_timeout} seconds for server compatibility)")
+        
+        # Configurable timeout with retry for Ubuntu servers
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json=data, timeout=ai_timeout)
+                response.raise_for_status()
+                break  # Success, exit retry loop
+            except requests.exceptions.Timeout:
+                if attempt < max_retries - 1:
+                    print_warning(f"⏰ Timeout attempt {attempt + 1}, retrying with longer timeout...")
+                    ai_timeout += 60  # Add 60s for next attempt
+                    continue
+                else:
+                    raise  # Final attempt failed
         response.raise_for_status()
         
         response_json = response.json()
