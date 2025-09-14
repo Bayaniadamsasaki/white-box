@@ -210,30 +210,69 @@ def send_to_telegram(test_name, result, suggestion):
 
 
 # Ollama Configuration
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "deepseek-r1:8b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+def create_fallback_analysis(test_name, raw_output, reason):
+    """Create manual analysis when AI is not available"""
+    # Simple rule-based analysis
+    output_lower = raw_output.lower()
+    
+    # Basic security assessment
+    if any(keyword in output_lower for keyword in ['error', 'failed', 'denied', 'refused']):
+        return "Status: PERHATIAN\nMasalah: Ditemukan error dalam output\nSaran: Review manual diperlukan"
+    elif any(keyword in output_lower for keyword in ['root', 'admin', 'sudo', 'privilege']):
+        return "Status: PERHATIAN\nMasalah: Akses privileged terdeteksi\nSaran: Verifikasi keamanan akses"
+    elif any(keyword in output_lower for keyword in ['open', 'listening', 'accept']):
+        return "Status: PERHATIAN\nMasalah: Port/layanan terbuka terdeteksi\nSaran: Pastikan hanya layanan perlu yang aktif"
+    else:
+        return "Status: AMAN\nMasalah: Tidak ada indikasi masalah langsung\nSaran: Lanjutkan monitoring rutin"
 
 def get_ollama_suggestion(test_name, raw_output):
     """Get security analysis from local Ollama model"""
     if not raw_output or not raw_output.strip():
         return "Tidak ada output mentah yang dihasilkan oleh tes, jadi tidak ada saran yang diminta dari AI."
 
-    prompt = f"""Analisis keamanan '{test_name}':
+    prompt = f"""Analisis singkat '{test_name}':
 
-Data: {raw_output[:500]}
+Data: {raw_output[:300]}
 
-Format jawaban:
-Status: [AMAN/BAHAYA/PERHATIAN]  
-Masalah: [temuan]
-Saran: [solusi]"""
+Jawab SINGKAT (maks 3 baris):
+Status: [AMAN/BAHAYA/PERHATIAN]
+Masalah: [1 kalimat]  
+Saran: [1 kalimat]"""
 
     try:
-        # Check if Ollama is running with quick timeout
-        print_info(f"Checking Ollama connection...")
-        health_response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=3)
-        if health_response.status_code != 200:
-            print_warning("Ollama tidak dapat diakses. Jalankan 'ollama serve' terlebih dahulu.")
-            return f"AI Analysis tidak tersedia (Ollama offline). Manual review diperlukan untuk '{test_name}'."
+        # Enhanced Ollama diagnostics
+        print_info(f"🔍 Checking Ollama connection...")
+        
+        # Check if Ollama is running
+        try:
+            health_response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
+            if health_response.status_code != 200:
+                print_warning("Ollama tidak dapat diakses.")
+                return create_fallback_analysis(test_name, raw_output, "Ollama offline")
+        except requests.exceptions.ConnectionError:
+            print_warning("Ollama server tidak running.")
+            return create_fallback_analysis(test_name, raw_output, "Connection failed")
+        except requests.exceptions.Timeout:
+            print_warning("Ollama connection timeout.")
+            return create_fallback_analysis(test_name, raw_output, "Connection timeout")
+        
+        # Check if model is available
+        try:
+            models_response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
+            models_data = models_response.json()
+            available_models = [model['name'] for model in models_data.get('models', [])]
+            
+            if OLLAMA_MODEL not in available_models:
+                print_warning(f"Model {OLLAMA_MODEL} tidak ditemukan. Available: {available_models}")
+                return create_fallback_analysis(test_name, raw_output, f"Model {OLLAMA_MODEL} not found")
+                
+        except Exception as e:
+            print_warning(f"Cannot check available models: {e}")
+        
+        print_info(f"✅ Ollama OK. Model: {OLLAMA_MODEL}")
         
         # Prepare request for Ollama with fast parameters for llama3.2:1b
         data = {
@@ -242,18 +281,18 @@ Saran: [solusi]"""
             "stream": False,
             "options": {
                 "temperature": 0.3,      # Lower for faster, more focused responses
-                "num_predict": 300,      # Shorter for speed
-                "num_ctx": 1024,         # Smaller context for speed
-                "top_k": 20,             # Less choices for speed
-                "top_p": 0.8
+                "num_predict": 100,      # Much shorter output - max ~50-70 words
+                "num_ctx": 512,          # Smaller context for speed
+                "top_k": 10,             # Very limited choices for speed
+                "top_p": 0.7
             }
         }
         
         print_info(f"Requesting analysis from Ollama model '{OLLAMA_MODEL}'...")
-        print_info("⏳ Please wait... Processing (10-30 seconds for llama3.2:1b)")
+        print_info("⏳ Fast processing... (max 30 seconds)")
         
-        # Shorter timeout for lighter model
-        response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json=data, timeout=60)
+        # Much shorter timeout for server environments
+        response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json=data, timeout=30)
         response.raise_for_status()
         
         response_json = response.json()
@@ -340,7 +379,7 @@ Lanjutkan dari bagian yang terpotong dan selesaikan analisis:"""
                         "prompt": continue_prompt,
                         "stream": False,
                         "options": {
-                            "temperature": 0.5,      
+                            "temperature": 0.5,
                             "top_p": 0.9,
                             "num_predict": 500,      # Enough for completion
                             "num_ctx": 2048,
@@ -403,31 +442,12 @@ Lanjutkan dari bagian yang terpotong dan selesaikan analisis:"""
 
 **REKOMENDASI:**
 1. Review manual hasil tes: {test_name}
-2. Coba jalankan ulang jika diperlukan
-3. Periksa konfigurasi Ollama jika sering timeout
-
-**PRIORITAS:** Review manual segera diperlukan"""
     except requests.exceptions.Timeout:
-        print_warning(f"⏰ Ollama timeout untuk '{test_name}' - Model mungkin sedang loading")
-        return f"""**STATUS:** TIMEOUT - PERLU REVIEW
-
-**TEMUAN:**
-• AI analysis timeout setelah 60 detik
-• Model mungkin sedang loading atau overloaded
-
-**REKOMENDASI:**
-1. Tunggu beberapa menit lalu coba lagi
-2. Review manual hasil tes sementara
-3. Restart Ollama jika masalah berlanjut
-
-**PRIORITAS:** Manual review sementara, retry AI analysis nanti"""
+        print_warning(f"⏰ Ollama timeout untuk '{test_name}' - Using fallback analysis")
+        return create_fallback_analysis(test_name, raw_output, "AI timeout after 30s")
     except requests.exceptions.ConnectionError:
         print_warning(f"🔌 Gagal terhubung ke Ollama untuk '{test_name}'")
-        return f"""**STATUS:** OFFLINE - PERLU REVIEW
-
-**TEMUAN:**
-• Ollama tidak berjalan atau tidak dapat diakses
-• Koneksi ke localhost:11434 gagal
+        return create_fallback_analysis(test_name, raw_output, "Ollama offline")
 
 **REKOMENDASI:**
 1. Jalankan: ollama serve
