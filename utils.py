@@ -239,7 +239,7 @@ Data: {raw_output[:300]}
 
 Jawab SINGKAT (maks 3 baris):
 Status: [AMAN/BAHAYA/PERHATIAN]
-Masalah: [1 kalimat]  
+Masalah: [1 kalimat]
 Saran: [1 kalimat]"""
 
     try:
