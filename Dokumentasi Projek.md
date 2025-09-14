@@ -18,7 +18,7 @@ Proyek ini adalah **sistem keamanan siber terintegrasi** yang menggabungkan:
 
 1. **White-box Security Scanner** - Pemindaian keamanan komprehensif dari dalam sistem
 2. **Real-time Attack Detection** - Monitoring serangan real-time dari blackbox tools
-3. **AI-powered Analysis** - Analisis otomatis menggunakan Gemini AI
+3. **AI-powered Analysis** - Analisis otomatis menggunakan Ollama AI (Local)
 4. **Automated Alerting** - Notifikasi otomatis via Telegram
 5. **Comprehensive Reporting** - Laporan keamanan lengkap dengan rekomendasi
 
@@ -206,7 +206,7 @@ hashlib - Cryptographic operations
 re - Pattern matching & regex
 
 # AI & Communication
-google-generativeai - Gemini AI integration
+requests - Ollama AI integration
 requests - HTTP communications
 telegram-bot-api - Telegram integration
 
@@ -401,7 +401,7 @@ Sistem keamanan terintegrasi dengan real-time monitoring dan analisis AI dapat m
 
 ### **Tools Integration:**
 - Subfinder, FFUF, Nuclei, Nmap
-- Gemini AI API
+- Ollama AI (Local)
 - Telegram Bot API
 - Linux/Windows Security APIs
 
@@ -413,7 +413,7 @@ Proyek **NULL Security Scanner & Monitoring System** adalah sistem keamanan sibe
 
 1. **Comprehensive Security Assessment** (30+ checks)
 2. **Real-time Attack Detection** (15+ blackbox tools)
-3. **AI-powered Analysis** (Gemini integration)
+3. **AI-powered Analysis** (Ollama local integration)
 4. **Automated Response** (Telegram notifications)
 5. **Continuous Operations** (24/7 monitoring)
 

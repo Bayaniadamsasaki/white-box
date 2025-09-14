@@ -6,7 +6,7 @@ Sistem monitoring real-time untuk mendeteksi serangan dari blackbox security too
 
 - **Monitor log files** secara real-time untuk mendeteksi aktivitas mencurigakan
 - **Detect network activities** yang menunjukkan pola serangan
-- **Analyze threats** menggunakan AI (Gemini) secara otomatis
+- **Analyze threats** menggunakan AI (Ollama llama3.2:1b) secara otomatis
 - **Send alerts** melalui Telegram ketika serangan terdeteksi
 - **Support continuous monitoring** tanpa perlu menjalankan scan berulang
 
@@ -59,13 +59,14 @@ Copy `env.example` to `.env` dan isi konfigurasi:
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=your_chat_id_here
 
-# Gemini AI Configuration  
-GEMINI_API_KEY=your_gemini_api_key_here
+# Ollama AI Configuration (Local)
+OLLAMA_MODEL=llama3.2:1b
+OLLAMA_BASE_URL=http://localhost:11434
 ```
 
 ### 3. Test Configuration
 ```bash
-python utils.py  # Test Telegram & Gemini connectivity
+python utils.py  # Test Telegram & AI connectivity
 ```
 
 ## Usage Modes
@@ -240,7 +241,7 @@ Ketika serangan terdeteksi, sistem akan:
    - Check permission untuk akses log files
    - Buat local log files untuk testing
 
-3. **"Telegram/Gemini error"**
+3. **"Telegram/AI error"**
    - Check `.env` configuration
    - Test connectivity: `python utils.py`
    - Verify API keys
@@ -289,7 +290,7 @@ null/
 ├── start_monitoring.py      # Main entry point untuk monitoring
 ├── security_monitor.py      # Core monitoring engine  
 ├── main_scanner.py         # Integrated dengan monitoring option
-├── utils.py               # Telegram & Gemini integration
+├── utils.py               # Telegram & AI integration
 ├── .env                   # Configuration file
 └── requirements.txt       # Dependencies
 ```

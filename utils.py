@@ -218,18 +218,14 @@ def get_ollama_suggestion(test_name, raw_output):
     if not raw_output or not raw_output.strip():
         return "Tidak ada output mentah yang dihasilkan oleh tes, jadi tidak ada saran yang diminta dari AI."
 
-    prompt = f"""Analisis hasil tes keamanan untuk '{test_name}':
+    prompt = f"""Analisis keamanan '{test_name}':
 
-Data hasil tes:
-{raw_output}
+Data: {raw_output[:500]}
 
-Berikan analisis lengkap dalam format:
-
-Status: [AMAN/BAHAYA/PERLU PERHATIAN]
-Masalah: [jelaskan temuan keamanan dengan detail]
-Saran: [berikan rekomendasi konkret untuk perbaikan]
-
-Pastikan analisis lengkap dan tidak terpotong."""
+Format jawaban:
+Status: [AMAN/BAHAYA/PERHATIAN]  
+Masalah: [temuan]
+Saran: [solusi]"""
 
     try:
         # Check if Ollama is running with quick timeout
@@ -239,25 +235,25 @@ Pastikan analisis lengkap dan tidak terpotong."""
             print_warning("Ollama tidak dapat diakses. Jalankan 'ollama serve' terlebih dahulu.")
             return f"AI Analysis tidak tersedia (Ollama offline). Manual review diperlukan untuk '{test_name}'."
         
-        # Prepare request for Ollama with balanced parameters
+        # Prepare request for Ollama with fast parameters for llama3.2:1b
         data = {
             "model": OLLAMA_MODEL,
             "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature": 0.7,      
-                "num_predict": 1000,     # Increased for complete responses
-                "num_ctx": 2048,         # Increased context window
-                "top_k": 40,             
-                "top_p": 0.9
+                "temperature": 0.3,      # Lower for faster, more focused responses
+                "num_predict": 300,      # Shorter for speed
+                "num_ctx": 1024,         # Smaller context for speed
+                "top_k": 20,             # Less choices for speed
+                "top_p": 0.8
             }
         }
         
         print_info(f"Requesting analysis from Ollama model '{OLLAMA_MODEL}'...")
-        print_info("⏳ Please wait... Model is processing (may take 30-120 seconds)")
+        print_info("⏳ Please wait... Processing (10-30 seconds for llama3.2:1b)")
         
-        # Use longer timeout for model inference with ultra-light parameters
-        response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json=data, timeout=120)
+        # Shorter timeout for lighter model
+        response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json=data, timeout=60)
         response.raise_for_status()
         
         response_json = response.json()

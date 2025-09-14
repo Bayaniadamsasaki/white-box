@@ -60,7 +60,7 @@ if [ ! -f ".env" ]; then
     echo "Environment file created. Please edit .env with your credentials:"
     echo "  - TELEGRAM_BOT_TOKEN"
     echo "  - TELEGRAM_CHAT_ID" 
-    echo "  - GEMINI_API_KEY"
+    echo "  - Install Ollama AI with: curl -fsSL https://ollama.ai/install.sh | sh"
 fi
 
 # Create systemd service file (optional)
@@ -101,22 +101,29 @@ echo "🐍 Virtual environment: $PROJECT_DIR/env"
 echo "📝 Configuration file: $PROJECT_DIR/.env"
 echo
 echo "🔧 NEXT STEPS:"
-echo "1. Edit configuration file:"
+echo "1. Install Ollama AI:"
+echo "   curl -fsSL https://ollama.ai/install.sh | sh"
+echo "   ollama serve &"
+echo "   ollama pull llama3.2:1b"
+echo
+echo "2. Edit configuration file:"
 echo "   cd $PROJECT_DIR && nano .env"
 echo
-echo "2. Test the system:"
+echo "3. Test the system:"
 echo "   cd $PROJECT_DIR && source env/bin/activate"
-echo "   python attack_simulator.py"
+echo "   python host_utils.py"
 echo
-echo "3. Run full security scan (MAIN COMMAND):"
+echo "4. Run full security scan (MAIN COMMAND):"
 echo "   sudo $PROJECT_DIR/env/bin/python main_scanner.py"
 echo
-echo "4. Enable auto-start monitoring service (optional):"
+echo "5. Enable auto-start monitoring service (optional):"
 echo "   sudo systemctl enable security-monitor"
 echo "   sudo systemctl start security-monitor"
 echo
 echo "📊 TESTING:"
-echo "- Attack simulation: python attack_simulator.py"
+echo "- Host utilities test: python host_utils.py"
+echo "- Full system scan: python main_scanner.py"
+echo "- Real-time monitoring: python start_monitoring.py --continuous"
 echo
 echo "📜 LOGS akan tersimpan di:"
 echo "- /var/log/security-scanner/"

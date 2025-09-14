@@ -30,11 +30,11 @@ python start_monitoring.py --verbose     # Detail logging
 ```bash
 # Setup Ollama AI (Local - Free & Private)
 ollama serve                    # Start Ollama server
-ollama pull deepseek-r1:8b     # Download AI model (5.2GB)
+ollama pull llama3.2:1b        # Download AI model (1.3GB - fast!)
 ollama list                    # Check installed models
 
 # Test AI connection
-python -c "from utils import get_ollama_suggestion; print('AI Ready!')"
+python -c "from utils import get_ai_suggestion; print('AI Ready!')"
 ```
 
 ---
@@ -68,7 +68,7 @@ pip install -r requirements.txt
 
 # Start server & download model
 ollama serve
-ollama pull deepseek-r1:8b
+ollama pull llama3.2:1b
 ```
 
 ---
@@ -131,7 +131,7 @@ pip list | grep -E "(requests|psutil|python-dotenv)"
 curl http://localhost:11434/api/tags  # Should return model list
 
 # Check environment variables
-python -c "import os; from dotenv import load_dotenv; load_dotenv(); print('Telegram:', bool(os.getenv('TELEGRAM_BOT_TOKEN'))); print('Ollama:', os.getenv('USE_OLLAMA'))"
+python -c "import os; from dotenv import load_dotenv; load_dotenv(); print('Telegram:', bool(os.getenv('TELEGRAM_BOT_TOKEN'))); print('AI Model:', os.getenv('OLLAMA_MODEL'))"
 
 # Test Telegram connection
 python -c "from utils import send_to_telegram; send_to_telegram('Test', 'System OK', 'Connection test successful')"
@@ -235,7 +235,7 @@ python hardening_checker.py > hardening_report.txt
 ### **Maintenance Commands**
 ```bash
 # Update AI model
-ollama pull deepseek-r1:8b
+ollama pull llama3.2:1b
 
 # Clean logs
 del *.log      # Windows
@@ -259,7 +259,7 @@ pip install -r requirements.txt
 
 # 3. Setup Ollama
 ollama serve
-ollama pull deepseek-r1:8b
+ollama pull llama3.2:1b
 
 # 4. Test system
 python ssh_checker.py

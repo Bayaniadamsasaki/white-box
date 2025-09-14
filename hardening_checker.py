@@ -254,7 +254,7 @@ def run_hardening_checks():
         combined_raw_output = msg
 
     ai_saran = get_ai_suggestion(test_name, combined_raw_output)
-    print_info(f"Saran dari Gemini: {ai_saran}")
+    print_info(f"Saran dari AI: {ai_saran}")
     
     send_to_telegram(test_name, combined_raw_output, ai_saran)
 

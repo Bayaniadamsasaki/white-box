@@ -262,7 +262,7 @@ class LogMonitor:
         await self._process_security_event(event)
     
     async def _process_security_event(self, event: SecurityEvent):
-        """Process security event dengan Gemini AI dan kirim ke Telegram"""
+        """Process security event dengan AI analysis dan kirim ke Telegram"""
         test_name = f"DETEKSI SERANGAN {event.tool_name.upper()}"
         
         # Format output untuk analisis
@@ -277,7 +277,7 @@ Details: {json.dumps(event.details, indent=2)}
 
 Raw Log: {event.raw_log}"""
         
-        # Dapatkan saran dari Gemini AI
+        # Dapatkan saran dari AI
         ai_saran = get_ai_suggestion(test_name, event_details)
         
         # Kirim ke Telegram
@@ -389,7 +389,7 @@ class NetworkMonitor:
         await self._process_suspicious_event(event)
     
     async def _process_suspicious_event(self, event: SecurityEvent):
-        """Process suspicious event dengan Gemini AI dan kirim ke Telegram"""
+        """Process suspicious event dengan AI analysis dan kirim ke Telegram"""
         test_name = f"AKTIVITAS MENCURIGAKAN - {event.attack_type.upper()}"
         
         event_details = f"""Activity Type: {event.attack_type}
@@ -402,7 +402,7 @@ Network Details: {json.dumps(event.details, indent=2)}
 
 Description: {event.raw_log}"""
         
-        # Dapatkan saran dari Gemini AI
+        # Dapatkan saran dari AI
         ai_saran = get_ai_suggestion(test_name, event_details)
         
         # Kirim ke Telegram
@@ -640,7 +640,7 @@ Monitoring Mode: Continuous
             
             # Get AI analysis
             print_info("🤖 Mendapatkan analisis AI...")
-            gemini_analysis = get_ai_suggestion(
+            ai_analysis = get_ai_suggestion(
                 f"SECURITY ALERT - {event.tool_name.upper()} ATTACK DETECTED", 
                 analysis_data
             )
@@ -650,7 +650,7 @@ Monitoring Mode: Continuous
             send_to_telegram(
                 f"🚨 SERANGAN TERDETEKSI - {event.tool_name.upper()}", 
                 analysis_data, 
-                gemini_analysis
+                ai_analysis
             )
             
             print_success("✅ Analisis dan notifikasi selesai!")
@@ -824,7 +824,7 @@ Security monitoring components: {'Ready' if (monitor_manager.log_paths or PSUTIL
         
         print_success("Security monitoring components berhasil ditest")
         
-        # Dapatkan saran dari Gemini
+        # Dapatkan saran dari AI
         ai_saran = get_ai_suggestion(test_name, raw_output)
         
         # Kirim ke Telegram

@@ -98,7 +98,7 @@ def main():
         print_danger(f"Error dalam security monitoring: {e}")
         print_info("Pastikan:")
         print_info("• File konfigurasi .env sudah benar")
-        print_info("• Koneksi internet tersedia (untuk Telegram & Gemini)")
+        print_info("• Koneksi internet tersedia (untuk Telegram & AI)")
         print_info("• Dependencies sudah terinstall (pip install -r requirements.txt)")
 
 def print_usage():

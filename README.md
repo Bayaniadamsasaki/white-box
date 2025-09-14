@@ -25,9 +25,8 @@ nano .env  # Edit dengan API keys Anda
 TELEGRAM_BOT_TOKEN=1234567890:ABCDEFGH...  # Bot Telegram
 TELEGRAM_CHAT_ID=123456789                 # Chat ID Telegram  
 
-# AI Configuration (Choose one)
-USE_OLLAMA=true                            # Use local Ollama AI
-OLLAMA_MODEL=deepseek-r1:8b               # Local AI model
+# AI Configuration - Local Ollama AI (Privacy & Fast)
+OLLAMA_MODEL=llama3.2:1b                  # Local AI model (fast & light)
 OLLAMA_BASE_URL=http://localhost:11434    # Ollama server URL
 ```
 
@@ -62,7 +61,7 @@ python start_monitoring.py --continuous
 
 ### Ollama Setup (Recommended - Local AI):
 1. Install Ollama dari [ollama.ai](https://ollama.ai/)
-2. Pull model: `ollama pull deepseek-r1:8b`
+2. Pull model: `ollama pull llama3.2:1b`
 3. Start server: `ollama serve`
 
 ## 🛡️ **Fitur Utama**
@@ -84,11 +83,12 @@ python start_monitoring.py --continuous
 - 🚨 **Instant Alerts** - Immediate Telegram notifications
 
 ### **AI Integration**
-- 🤖 **Automated Analysis** - Ollama Local AI untuk analisis hasil
-- 🤖 **Risk Assessment** - Penilaian tingkat risiko otomatis
+- 🤖 **Automated Analysis** - Ollama llama3.2:1b untuk analisis cepat
+- 🤖 **Risk Assessment** - Penilaian tingkat risiko otomatis  
 - 🤖 **Smart Recommendations** - Saran perbaikan spesifik
-- 🤖 **Context-aware** - Analisis berdasarkan konteks sistem
+- 🤖 **Fast Processing** - Response 10-30 detik (vs 2+ menit)
 - 🤖 **Privacy-focused** - AI berjalan local, data tidak ke cloud
+- 🤖 **No API Keys** - Tidak perlu API eksternal, fully offline
 
 ## 🎮 **Commands Quick Reference**
 
@@ -118,7 +118,7 @@ python start_monitoring.py --verbose       # Detailed logging
 ### **🤖 AI & Configuration**
 ```bash
 ollama serve                        # Start Ollama AI server
-ollama pull deepseek-r1:8b         # Download AI model (5.2GB)
+ollama pull llama3.2:1b            # Download AI model (1.3GB - fast!)
 copy env.example .env               # Setup configuration
 ```
 
