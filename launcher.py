@@ -52,116 +52,136 @@ def show_options():
   {Colors.BOLD}[0]{Colors.ENDC} 🚪 Exit                     - Exit program
 """)
 
+def wait_for_return():
+    """Wait for user to press Enter to return to menu"""
+    input(f"\n{Colors.OKGREEN}📤 Scan completed! Press Enter to return to main menu...{Colors.ENDC}")
+
 def main():
-    """Main launcher function"""
-    try:
-        # Clear screen
-        os.system('cls' if os.name == 'nt' else 'clear')
-        
-        show_banner()
-        show_options()
-        
-        choice = input(f"\n{Colors.BOLD}Pilih opsi [0-9]: {Colors.ENDC}").strip()
-        
-        print(f"\n{Colors.OKBLUE}{'='*70}{Colors.ENDC}")
-        
-        if choice == "1":
-            print(f"{Colors.OKGREEN}🔍 Starting White-box Full Security Scan...{Colors.ENDC}")
-            os.system("python main_scanner.py")
+    """Main launcher function with menu loop"""
+    while True:
+        try:
+            # Clear screen
+            os.system('cls' if os.name == 'nt' else 'clear')
             
-        elif choice == "2":
-            print(f"{Colors.OKGREEN}⚡ Starting White-box Quick Security Check...{Colors.ENDC}")
-            print("Quick checks available:")
-            print("  [a] SSH + Users      [b] Network + Ports     [c] System + Hardening")
-            sub = input("Choose [a/b/c] or Enter for all: ").strip().lower()
+            show_banner()
+            show_options()
             
-            if sub == "a":
-                os.system("python ssh_checker.py && python user_group_checker.py")
-            elif sub == "b":
-                os.system("python network_config_checker.py && python port_scanner.py")
-            elif sub == "c":
-                os.system("python system_info_checker.py && python hardening_checker.py")
-            else:
-                os.system("python ssh_checker.py && python user_group_checker.py && python system_info_checker.py")
+            choice = input(f"\n{Colors.BOLD}Pilih opsi [0-9]: {Colors.ENDC}").strip()
+            
+            print(f"\n{Colors.OKBLUE}{'='*70}{Colors.ENDC}")
+            
+            if choice == "0":
+                print(f"{Colors.OKGREEN}🚪 Goodbye! Exiting NULL Security System...{Colors.ENDC}")
+                break
                 
-        elif choice == "3":
-            print(f"{Colors.OKGREEN}🔧 Individual Module Selection...{Colors.ENDC}")
-            modules = [
-                ("ssh_checker.py", "SSH Security"),
-                ("user_group_checker.py", "User & Groups"),
-                ("hardening_checker.py", "System Hardening"),
-                ("web_checker.py", "Web Services"),
-                ("port_scanner.py", "Port Scanning"),
-                ("network_config_checker.py", "Network Config")
-            ]
-            
-            print("Available modules:")
-            for i, (script, desc) in enumerate(modules, 1):
-                print(f"  [{i}] {desc}")
-            
-            mod_choice = input("Select module [1-6]: ").strip()
-            try:
-                idx = int(mod_choice) - 1
-                if 0 <= idx < len(modules):
-                    script, desc = modules[idx]
-                    print(f"Running {desc}...")
-                    os.system(f"python {script}")
+            elif choice == "1":
+                print(f"{Colors.OKGREEN}🔍 Starting White-box Full Security Scan...{Colors.ENDC}")
+                os.system("python main_scanner.py")
+                wait_for_return()
+                
+            elif choice == "2":
+                print(f"{Colors.OKGREEN}⚡ Starting White-box Quick Security Check...{Colors.ENDC}")
+                print("Quick checks available:")
+                print("  [a] SSH + Users      [b] Network + Ports     [c] System + Hardening")
+                sub = input("Choose [a/b/c] or Enter for all: ").strip().lower()
+                
+                if sub == "a":
+                    os.system("python ssh_checker.py && python user_group_checker.py")
+                elif sub == "b":
+                    os.system("python network_config_checker.py && python port_scanner.py")
+                elif sub == "c":
+                    os.system("python system_info_checker.py && python hardening_checker.py")
                 else:
-                    print("Invalid module choice")
-            except:
-                print("Invalid input")
+                    os.system("python ssh_checker.py && python user_group_checker.py && python system_info_checker.py")
+                wait_for_return()
+                    
+            elif choice == "3":
+                print(f"{Colors.OKGREEN}🔧 Individual Module Selection...{Colors.ENDC}")
+                modules = [
+                    ("ssh_checker.py", "SSH Security"),
+                    ("user_group_checker.py", "User & Groups"),
+                    ("hardening_checker.py", "System Hardening"),
+                    ("web_checker.py", "Web Services"),
+                    ("port_scanner.py", "Port Scanning"),
+                    ("network_config_checker.py", "Network Config")
+                ]
                 
-        elif choice == "4":
-            print(f"{Colors.WARNING}🚨 Starting Black-box Real-time Attack Monitor...{Colors.ENDC}")
-            print(f"{Colors.WARNING}⚠️  Press Ctrl+C to stop monitoring{Colors.ENDC}")
-            os.system("python start_monitoring.py --continuous")
-            
-        elif choice == "5":
-            print(f"{Colors.WARNING}🔍 Starting Black-box Single Attack Scan...{Colors.ENDC}")
-            os.system("python start_monitoring.py --single")
-            
-        elif choice == "6":
-            print(f"{Colors.WARNING}⏱️ Starting Black-box Custom Interval Monitor...{Colors.ENDC}")
-            try:
-                interval = input("Enter monitoring interval in seconds [default: 30]: ").strip()
-                if not interval:
-                    interval = "30"
-                interval = int(interval)
-                print(f"Starting monitoring with {interval}s interval...")
-                os.system(f"python start_monitoring.py --interval {interval}")
-            except:
-                print("Invalid interval, using default 30 seconds")
-                os.system("python start_monitoring.py --interval 30")
+                print("Available modules:")
+                for i, (script, desc) in enumerate(modules, 1):
+                    print(f"  [{i}] {desc}")
                 
-        elif choice == "7":
-            print(f"{Colors.OKBLUE}🎮 Launching Interactive Menu...{Colors.ENDC}")
-            os.system("python cli_menu.py")
-            
-        elif choice == "8":
-            print(f"{Colors.OKBLUE}⚙️ Opening Configuration Setup...{Colors.ENDC}")
-            if os.name == 'nt':
-                os.system("copy env.example .env & notepad .env")
+                mod_choice = input("Select module [1-6]: ").strip()
+                try:
+                    idx = int(mod_choice) - 1
+                    if 0 <= idx < len(modules):
+                        script, desc = modules[idx]
+                        print(f"Running {desc}...")
+                        os.system(f"python {script}")
+                        wait_for_return()
+                    else:
+                        print("Invalid module choice")
+                        wait_for_return()
+                except:
+                    print("Invalid input")
+                    wait_for_return()
+                    
+            elif choice == "4":
+                print(f"{Colors.WARNING}🚨 Starting Black-box Real-time Attack Monitor...{Colors.ENDC}")
+                print(f"{Colors.WARNING}⚠️  Press Ctrl+C to stop monitoring{Colors.ENDC}")
+                os.system("python start_monitoring.py --continuous")
+                wait_for_return()
+                
+            elif choice == "5":
+                print(f"{Colors.WARNING}🔍 Starting Black-box Single Attack Scan...{Colors.ENDC}")
+                os.system("python start_monitoring.py --single")
+                wait_for_return()
+                
+            elif choice == "6":
+                print(f"{Colors.WARNING}⏱️ Starting Black-box Custom Interval Monitor...{Colors.ENDC}")
+                try:
+                    interval = input("Enter monitoring interval in seconds [default: 30]: ").strip()
+                    if not interval:
+                        interval = "30"
+                    interval = int(interval)
+                    print(f"Starting monitoring with {interval}s interval...")
+                    os.system(f"python start_monitoring.py --interval {interval}")
+                except:
+                    print("Invalid interval, using default 30 seconds")
+                    os.system("python start_monitoring.py --interval 30")
+                wait_for_return()
+                    
+            elif choice == "7":
+                print(f"{Colors.OKBLUE}🎮 Launching Interactive Menu...{Colors.ENDC}")
+                os.system("python cli_menu.py")
+                wait_for_return()
+                
+            elif choice == "8":
+                print(f"{Colors.OKBLUE}⚙️ Opening Configuration Setup...{Colors.ENDC}")
+                if os.name == 'nt':
+                    os.system("copy env.example .env & notepad .env")
+                else:
+                    os.system("cp env.example .env && nano .env")
+                print("Please restart the application after configuration")
+                wait_for_return()
+                
+            elif choice == "9":
+                print(f"{Colors.OKBLUE}📋 Opening Commands Guide...{Colors.ENDC}")
+                if os.name == 'nt':
+                    os.system("type COMMANDS_GUIDE.md | more")
+                else:
+                    os.system("less COMMANDS_GUIDE.md")
+                wait_for_return()
+                    
             else:
-                os.system("cp env.example .env && nano .env")
-            print("Please restart the application after configuration")
-            
-        elif choice == "9":
-            print(f"{Colors.OKBLUE}📋 Opening Commands Guide...{Colors.ENDC}")
-            if os.name == 'nt':
-                os.system("type COMMANDS_GUIDE.md | more")
-            else:
-                os.system("less COMMANDS_GUIDE.md")
+                print(f"{Colors.FAIL}❌ Invalid choice! Please select 0-9{Colors.ENDC}")
+                wait_for_return()
                 
-        elif choice == "0":
-            print(f"{Colors.OKGREEN}👋 Thank you for using NULL Security System!{Colors.ENDC}")
-            sys.exit(0)
-            
-        else:
-            print(f"{Colors.FAIL}❌ Invalid choice! Please run again and select 0-9{Colors.ENDC}")
-            
-    except KeyboardInterrupt:
-        print(f"\n{Colors.WARNING}Program interrupted by user{Colors.ENDC}")
-        sys.exit(0)
+        except KeyboardInterrupt:
+            print(f"\n{Colors.WARNING}⚠️  Interrupted by user. Returning to menu...{Colors.ENDC}")
+            continue
+        except Exception as e:
+            print(f"{Colors.FAIL}❌ Error: {e}{Colors.ENDC}")
+            wait_for_return()
 
 if __name__ == "__main__":
     main()
