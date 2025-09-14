@@ -29,9 +29,6 @@ TELEGRAM_CHAT_ID=123456789                 # Chat ID Telegram
 USE_OLLAMA=true                            # Use local Ollama AI
 OLLAMA_MODEL=deepseek-r1:8b               # Local AI model
 OLLAMA_BASE_URL=http://localhost:11434    # Ollama server URL
-
-# OR use cloud AI (optional)
-GEMINI_API_KEY=AIza...                     # Google Gemini API (if USE_OLLAMA=false)
 ```
 
 ### 2. Install & Run
@@ -67,14 +64,6 @@ python start_monitoring.py --continuous
 1. Install Ollama dari [ollama.ai](https://ollama.ai/)
 2. Pull model: `ollama pull deepseek-r1:8b`
 3. Start server: `ollama serve`
-4. Test: `python test_ollama.py`
-
-### Gemini API Key (Optional - Cloud AI):
-1. Kunjungi [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Login dengan akun Google
-3. Klik "Create API Key"
-4. Set `USE_OLLAMA=false` di .env
-5. Salin API key yang dihasilkan
 
 ## 🛡️ **Fitur Utama**
 
@@ -209,7 +198,8 @@ null/
 │   └── attack_simulator.py          # Testing tools
 │
 ├── 📂 AI & Communications
-│   ├── utils.py                     # Gemini + Telegram
+│   │   ├── utils.py                     # AI + Telegram utilities
+├── README.md                        # Project documentation
 │   └── security_config.py          # Configuration
 │
 └── 📂 Documentation
@@ -245,7 +235,7 @@ Academic Project - Developed for thesis research purposes.
 
 - **🔍 Security Audit**: Komprehensif server security checks
 - **🛡️ Attack Detection**: Deteksi real-time serangan dari Subfinder, Katana, FFUF, Nuclei, Nmap, ParamSpider
-- **🤖 AI Analysis**: Analisis mendalam dengan Gemini AI
+- **🤖 AI Analysis**: Analisis mendalam dengan Ollama AI
 - **📱 Telegram Alerts**: Notifikasi real-time ke Telegram
 
 ## 🧪 Testing

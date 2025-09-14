@@ -209,47 +209,47 @@ def send_to_telegram(test_name, result, suggestion):
         print_danger(f"Terjadi kesalahan tidak terduga saat mengirim pesan ke Telegram untuk '{test_name}': {e}")
 
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_API_ENDPOINT = os.getenv("GEMINI_API_ENDPOINT", "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent")
-
 # Ollama Configuration
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "deepseek-r1:8b")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-USE_OLLAMA = os.getenv("USE_OLLAMA", "true").lower() == "true"
 
 def get_ollama_suggestion(test_name, raw_output):
     """Get security analysis from local Ollama model"""
     if not raw_output or not raw_output.strip():
         return "Tidak ada output mentah yang dihasilkan oleh tes, jadi tidak ada saran yang diminta dari AI."
 
-    prompt = f"""Analisis '{test_name}':
-Status: [AMAN/BAHAYA]
-Masalah: [apa yang ditemukan]
-Saran: [bagaimana mengatasinya]
+    prompt = f"""Analisis hasil tes keamanan untuk '{test_name}':
 
-Data: {raw_output[:200]}
+Data hasil tes:
+{raw_output}
 
-Jawaban:"""
+Berikan analisis lengkap dalam format:
+
+Status: [AMAN/BAHAYA/PERLU PERHATIAN]
+Masalah: [jelaskan temuan keamanan dengan detail]
+Saran: [berikan rekomendasi konkret untuk perbaikan]
+
+Pastikan analisis lengkap dan tidak terpotong."""
 
     try:
         # Check if Ollama is running with quick timeout
         print_info(f"Checking Ollama connection...")
         health_response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=3)
         if health_response.status_code != 200:
-            print_warning("Ollama tidak dapat diakses. Pastikan Ollama berjalan di localhost:11434")
+            print_warning("Ollama tidak dapat diakses. Jalankan 'ollama serve' terlebih dahulu.")
             return f"AI Analysis tidak tersedia (Ollama offline). Manual review diperlukan untuk '{test_name}'."
         
-        # Prepare request for Ollama with ultra-light parameters for speed
+        # Prepare request for Ollama with balanced parameters
         data = {
             "model": OLLAMA_MODEL,
             "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature": 0.7,      # Higher for faster sampling
-                "num_predict": 300,      # Very small output
-                "num_ctx": 512,          # Minimal context
-                "top_k": 20,             # Very limited choices
-                "top_p": 0.8
+                "temperature": 0.7,      
+                "num_predict": 1000,     # Increased for complete responses
+                "num_ctx": 2048,         # Increased context window
+                "top_k": 40,             
+                "top_p": 0.9
             }
         }
         
@@ -314,42 +314,30 @@ Jawaban:"""
 Masalah: AI analysis menghasilkan output yang perlu dibersihkan
 Saran: Review manual hasil tes untuk mendapatkan insight keamanan yang tepat"""
             
-            # Check if response seems truncated with better detection
+            # Check if response seems truncated - simplified detection
             if suggestion:
-                # More accurate truncation detection
-                suggestion_length = len(suggestion)
-                words = suggestion.split()
-                
-                # Check for various truncation indicators
+                # Only check for obvious truncation indicators
                 is_truncated = (
                     suggestion.endswith('...') or 
-                    suggestion.endswith('[...') or
                     suggestion.endswith('ter') or  
                     suggestion.endswith('men') or
                     suggestion.endswith('kan') or
                     suggestion.endswith('dan') or
                     suggestion.endswith('yang') or
                     suggestion.endswith(',') or
-                    suggestion.endswith('un') or
-                    suggestion.endswith('se') or
-                    # Check if doesn't end with proper punctuation
-                    (not suggestion.endswith(('.', '!', '?', ':', ')')) and suggestion_length > 100) or
                     # Check if too short (likely truncated)
-                    suggestion_length < 200 or
-                    # Check if ends abruptly without proper format completion
-                    ('**PRIORITAS:**' in suggestion and suggestion.count('**') < 6) or
-                    ('**REKOMENDASI:**' in suggestion and not suggestion.strip().endswith(('3', '.'))) or
-                    # Check if last word is incomplete (common in Indonesian)
-                    (len(words) > 0 and len(words[-1]) < 3 and words[-1].isalpha())
+                    len(suggestion) < 150
                 )
                 
                 if is_truncated:
                     print_warning("⚠️ Response appears truncated, requesting completion...")
                     
-                    # More focused continuation request
-                    continue_prompt = f"""Lanjutkan analisis: {suggestion}
+                    # Simple continuation request
+                    continue_prompt = f"""Lanjutkan analisis yang belum selesai ini:
 
-Lengkapi yang kurang:"""
+{suggestion}
+
+Lanjutkan dari bagian yang terpotong dan selesaikan analisis:"""
                     
                     continue_data = {
                         "model": OLLAMA_MODEL,
@@ -357,9 +345,9 @@ Lengkapi yang kurang:"""
                         "stream": False,
                         "options": {
                             "temperature": 0.5,      
-                            "top_p": 1.0,
-                            "num_predict": 200,      # Very short for continuation
-                            "num_ctx": 1024,
+                            "top_p": 0.9,
+                            "num_predict": 500,      # Enough for completion
+                            "num_ctx": 2048,
                             "top_k": 40
                         }
                     }
@@ -480,83 +468,9 @@ Lengkapi yang kurang:"""
 
 **PRIORITAS:** Manual review segera diperlukan"""
 
-def get_gemini_suggestion(test_name, raw_output):
-    """Get security analysis - automatically chooses between Ollama and Gemini"""
-    # Prioritize Ollama if configured
-    if USE_OLLAMA or not GEMINI_API_KEY:
-        return get_ollama_suggestion(test_name, raw_output)
-    
-    # Fallback to original Gemini implementation
-    if not GEMINI_API_KEY:
-        print_warning("Variabel lingkungan GEMINI_API_KEY tidak disetel. Menggunakan saran default.")
-        return "Tidak ada saran dari AI (API Key tidak tersedia)."
-    if not raw_output or not raw_output.strip():
-        return "Tidak ada output mentah yang dihasilkan oleh tes, jadi tidak ada saran yang diminta dari AI."
-
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "contents": [{
-            "parts": [{
-                "text": f"""Analisis hasil tes keamanan berikut untuk '{test_name}' pada server Ubuntu. Berikan saran perbaikan yang konkret dan actionable jika ada masalah yang teridentifikasi. Jika tidak ada masalah signifikan, konfirmasi bahwa konfigurasi tampak baik dari perspektif hasil tes ini. Fokus pada keamanan dan best practice. Jangan ada tanda baca yang tidak jelas agar bisa dikirim dengan benar ke Telegram buat saran yang singkat saja
-
-Nama Tes: {test_name}
-
-Hasil Tes Mentah:
-{raw_output}
-"""
-            }]
-        }],
-        "generationConfig": {
-          "temperature": 0.7,
-          "topK": 1,
-          "topP": 1,
-          "maxOutputTokens": 2048,
-        },
-        "safetySettings": [
-          { "category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE" },
-          { "category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE" },
-          { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-          { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"}
-        ]
-    }
-    
-    max_attempts = 3
-    current_attempt = 0
-    result_from_api = None
-
-    while current_attempt < max_attempts:
-        try:
-            full_url = f"{GEMINI_API_ENDPOINT}?key={GEMINI_API_KEY}"
-            response = requests.post(full_url, headers=headers, json=data, timeout=60) 
-            response.raise_for_status()
-            response_json = response.json()
-            if 'candidates' in response_json and response_json['candidates'] and \
-               'content' in response_json['candidates'][0] and \
-               'parts' in response_json['candidates'][0]['content'] and \
-               response_json['candidates'][0]['content']['parts'] and \
-               'text' in response_json['candidates'][0]['content']['parts'][0]:
-                gemini_suggestion = response_json['candidates'][0]['content']['parts'][0]['text']
-                return gemini_suggestion.strip()
-            elif 'error' in response_json:
-                error_details = response_json['error']
-                print_danger(f"Gemini API mengembalikan error untuk '{test_name}': {error_details.get('message', 'Error tidak diketahui')}")
-                return f"Error dari Gemini API: {error_details.get('message', 'Silakan cek log untuk detail.')}"
-            else:
-                print_danger(f"Gagal mem-parse respons dari Gemini API untuk '{test_name}'. Respons tidak memiliki struktur yang diharapkan.")
-                return "Gagal mem-parse respons Gemini API (struktur tidak dikenali)."
-
-        except requests.exceptions.Timeout:
-            print_danger(f"Timeout saat menghubungi Gemini API untuk '{test_name}'.")
-            return "Gagal menghubungi Gemini API (timeout)."
-        except requests.exceptions.RequestException as e:
-            print_danger(f"Gagal mendapatkan saran dari Gemini API untuk '{test_name}': {e}")
-            return f"Gagal menghubungi Gemini API: {e}"
-        except (KeyError, IndexError, TypeError) as e:
-            print_danger(f"Gagal mem-parse respons dari Gemini API untuk '{test_name}': {e}")
-            return "Gagal mem-parse respons Gemini API (kesalahan parsing)."
-        except Exception as e:
-            print_danger(f"Terjadi kesalahan tidak terduga saat menghubungi Gemini API untuk '{test_name}': {e}")
-            return f"Kesalahan tidak terduga dengan Gemini API: {e}"
+def get_ai_suggestion(test_name, raw_output):
+    """Get security analysis from Ollama AI model"""
+    return get_ollama_suggestion(test_name, raw_output)
 
 if __name__ == '__main__':
     print_header("Contoh Penggunaan Utilitas Cetak")
@@ -597,6 +511,6 @@ if __name__ == '__main__':
     print_header("Contoh capture_read_file_content (file tidak ada)")
     file_content_not_found = capture_read_file_content("file_tidak_ada_sama_sekali.txt", "Tes Baca File Tidak Ada")
     print_info(f"Captured (untuk log/telegram):\n{file_content_not_found}\n")
-    gemini_advice = get_gemini_suggestion(test_name_example, cmd_output_normal)
+    ai_advice = get_ai_suggestion(test_name_example, cmd_output_normal)
 
-    send_to_telegram(test_name_example, cmd_output_normal, gemini_advice)
+    send_to_telegram(test_name_example, cmd_output_normal, ai_advice)

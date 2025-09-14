@@ -7,7 +7,7 @@ konfigurasi yang ditemukan.
 import os
 import io
 import contextlib
-from utils import print_info, print_success, print_warning, print_danger, print_header, send_to_telegram, get_gemini_suggestion
+from utils import print_info, print_success, print_warning, print_danger, print_header, send_to_telegram, get_ai_suggestion
 
 def check_securetty_file_content():
     captured_output = []
@@ -81,10 +81,10 @@ def run_securetty_checks():
         raw_output = "Tidak ada output yang dihasilkan dari pemeriksaan securetty."
         print_info(raw_output)
 
-    gemini_saran = get_gemini_suggestion(test_name, raw_output)
+    ai_saran = get_ai_suggestion(test_name, raw_output)
     
 
-    send_to_telegram(test_name, raw_output, gemini_saran)
+    send_to_telegram(test_name, raw_output, ai_saran)
 
 if __name__ == '__main__':
     run_securetty_checks() 

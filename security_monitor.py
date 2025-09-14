@@ -18,7 +18,7 @@ from pathlib import Path
 import threading
 from utils import (
     print_info, print_success, print_warning, print_danger, print_header,
-    send_to_telegram, get_gemini_suggestion
+    send_to_telegram, get_ai_suggestion
 )
 
 try:
@@ -278,10 +278,10 @@ Details: {json.dumps(event.details, indent=2)}
 Raw Log: {event.raw_log}"""
         
         # Dapatkan saran dari Gemini AI
-        gemini_saran = get_gemini_suggestion(test_name, event_details)
+        ai_saran = get_ai_suggestion(test_name, event_details)
         
         # Kirim ke Telegram
-        send_to_telegram(test_name, event_details, gemini_saran)
+        send_to_telegram(test_name, event_details, ai_saran)
 
 class NetworkMonitor:
     """Monitor network connections untuk mendeteksi aktivitas suspicious"""
@@ -403,10 +403,10 @@ Network Details: {json.dumps(event.details, indent=2)}
 Description: {event.raw_log}"""
         
         # Dapatkan saran dari Gemini AI
-        gemini_saran = get_gemini_suggestion(test_name, event_details)
+        ai_saran = get_ai_suggestion(test_name, event_details)
         
         # Kirim ke Telegram
-        send_to_telegram(test_name, event_details, gemini_saran)
+        send_to_telegram(test_name, event_details, ai_saran)
 
 class SecurityMonitorManager:
     """Manager untuk menjalankan monitoring security dari berbagai tools"""
@@ -640,7 +640,7 @@ Monitoring Mode: Continuous
             
             # Get AI analysis
             print_info("🤖 Mendapatkan analisis AI...")
-            gemini_analysis = get_gemini_suggestion(
+            gemini_analysis = get_ai_suggestion(
                 f"SECURITY ALERT - {event.tool_name.upper()} ATTACK DETECTED", 
                 analysis_data
             )
@@ -825,10 +825,10 @@ Security monitoring components: {'Ready' if (monitor_manager.log_paths or PSUTIL
         print_success("Security monitoring components berhasil ditest")
         
         # Dapatkan saran dari Gemini
-        gemini_saran = get_gemini_suggestion(test_name, raw_output)
+        ai_saran = get_ai_suggestion(test_name, raw_output)
         
         # Kirim ke Telegram
-        send_to_telegram(test_name, raw_output, gemini_saran)
+        send_to_telegram(test_name, raw_output, ai_saran)
         
         # Tawarkan untuk memulai monitoring
         print_info("\nSecurity monitoring test selesai.")
@@ -838,8 +838,8 @@ Security monitoring components: {'Ready' if (monitor_manager.log_paths or PSUTIL
         error_msg = f"Error dalam security monitoring: {e}"
         print_danger(error_msg)
         
-        gemini_saran = get_gemini_suggestion(test_name, error_msg)
-        send_to_telegram(test_name, error_msg, gemini_saran)
+        ai_saran = get_ai_suggestion(test_name, error_msg)
+        send_to_telegram(test_name, error_msg, ai_saran)
 
 if __name__ == "__main__":
     """Direct execution - start real-time monitoring"""

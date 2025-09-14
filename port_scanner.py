@@ -8,7 +8,7 @@ import socket
 import errno
 from utils import (
     print_info, print_success, print_warning, print_danger,
-    print_header, send_to_telegram, get_gemini_suggestion
+    print_header, send_to_telegram, get_ai_suggestion
 )
 
 def capture_check_port_output(host, port):
@@ -139,9 +139,9 @@ def run_port_scan_checks(host, specific_ports_to_check=None, port_range_to_scan=
         combined_raw_output = f"Tidak ada port terbuka yang terdeteksi atau tidak ada output dari pemindaian port di {host}."
         print_info(combined_raw_output)
 
-    gemini_saran = get_gemini_suggestion(test_name, combined_raw_output)
+    ai_saran = get_ai_suggestion(test_name, combined_raw_output)
 
-    send_to_telegram(test_name, combined_raw_output, gemini_saran)
+    send_to_telegram(test_name, combined_raw_output, ai_saran)
 
 if __name__ == '__main__':
     target = "localhost"

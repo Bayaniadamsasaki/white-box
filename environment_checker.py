@@ -7,7 +7,7 @@ import os
 import platform
 from utils import (
     print_info, print_success, print_warning, print_danger, print_header,
-    send_to_telegram, get_gemini_suggestion,
+    send_to_telegram, get_ai_suggestion,
     capture_command_output # Untuk `env` jika diperlukan
 )
 
@@ -83,9 +83,9 @@ def run_environment_checks():
         combined_raw_output = "Tidak ada output yang dihasilkan dari pemeriksaan environment."
         print_info(combined_raw_output)
 
-    gemini_saran = get_gemini_suggestion(test_name, combined_raw_output)
+    ai_saran = get_ai_suggestion(test_name, combined_raw_output)
 
-    send_to_telegram(test_name, combined_raw_output, gemini_saran)
+    send_to_telegram(test_name, combined_raw_output, ai_saran)
 
 if __name__ == '__main__':
     run_environment_checks() 

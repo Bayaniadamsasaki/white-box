@@ -8,7 +8,7 @@ dan membaca banner awal yang dikirim oleh server.
 import socket
 from utils import (
     print_info, print_success, print_warning, print_danger,
-    print_header, send_to_telegram, get_gemini_suggestion
+    print_header, send_to_telegram, get_ai_suggestion
 )
 
 def capture_ssh_banner_grab(host, port=22):
@@ -52,10 +52,10 @@ def run_ssh_banner_checks(host, port=22):
     
     raw_output = capture_ssh_banner_grab(host, port)
     
-    gemini_saran = get_gemini_suggestion(test_name, raw_output)
+    ai_saran = get_ai_suggestion(test_name, raw_output)
     
     
-    send_to_telegram(test_name, raw_output, gemini_saran)
+    send_to_telegram(test_name, raw_output, ai_saran)
 
 if __name__ == '__main__':
     target_host = "localhost" 
