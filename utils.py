@@ -228,6 +228,33 @@ def create_fallback_analysis(test_name, raw_output, reason):
     else:
         return "Status: AMAN\nMasalah: Tidak ada indikasi masalah langsung\nSaran: Lanjutkan monitoring rutin"
 
+def create_enhanced_fallback(test_name, raw_output, partial_ai_response):
+    """Create enhanced fallback when AI gives incomplete response"""
+    output_lower = raw_output.lower()
+    
+    # Extract any useful info from partial AI response
+    status = "PERHATIAN"
+    if partial_ai_response:
+        if "aman" in partial_ai_response.lower():
+            status = "AMAN"
+        elif "bahaya" in partial_ai_response.lower():
+            status = "BAHAYA"
+    
+    # Rule-based assessment
+    if any(keyword in output_lower for keyword in ['inactive', 'not found', 'failed', 'error']):
+        masalah = "Service tidak aktif atau command tidak ditemukan"
+        saran = "Periksa instalasi dan konfigurasi layanan keamanan"
+    elif any(keyword in output_lower for keyword in ['fail2ban', 'ssh', 'hardening']):
+        masalah = "Konfigurasi keamanan perlu review"
+        saran = "Pastikan hardening tools terpasang dan dikonfigurasi dengan benar"
+    else:
+        masalah = "Perlu analisis manual lebih lanjut"
+        saran = "Review output untuk identifikasi masalah keamanan"
+    
+    return f"""Status: {status}
+Masalah: {masalah}
+Saran: {saran}"""
+
 def get_ollama_suggestion(test_name, raw_output):
     """Get security analysis from local Ollama model"""
     if not raw_output or not raw_output.strip():
@@ -239,14 +266,15 @@ def get_ollama_suggestion(test_name, raw_output):
         print_info("🔧 AI analysis disabled - using fallback analysis only")
         return create_fallback_analysis(test_name, raw_output, "AI disabled for server performance")
 
-    prompt = f"""Analisis singkat '{test_name}':
+    # Simplified prompt for better consistency
+    prompt = f"""Analisis '{test_name}':
 
-Data: {raw_output[:1000]}
+Data: {raw_output[:500]}
 
-Jawab SINGKAT (maks 3 baris):
-Status: [AMAN/BAHAYA/PERHATIAN]
-Masalah: [1 kalimat]
-Saran: [1 kalimat]"""
+Format respons:
+Status: AMAN/BAHAYA/PERHATIAN
+Masalah: [satu kalimat singkat]
+Saran: [satu kalimat singkat]"""
 
     try:
         # Enhanced Ollama diagnostics
@@ -280,25 +308,26 @@ Saran: [1 kalimat]"""
         
         print_info(f"✅ Ollama OK. Model: {OLLAMA_MODEL}")
         
-        # Prepare request for Ollama with fast parameters for llama3.2:1b
+        # Prepare request for Ollama with optimized parameters for complete responses
         data = {
             "model": OLLAMA_MODEL,
             "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature": 0.3,      # Lower for faster, more focused responses
-                "num_predict": 100,      # Much shorter output - max ~50-70 words
-                "num_ctx": 512,          # Smaller context for speed
-                "top_k": 10,             # Very limited choices for speed
-                "top_p": 0.7
+                "temperature": 0.1,      # Very low for consistency
+                "num_predict": 200,      # Increased for complete 3-line responses
+                "num_ctx": 1024,         # Sufficient context
+                "top_k": 5,              # Very focused
+                "top_p": 0.8,
+                "stop": ["\n\n", "---"]  # Stop tokens to prevent rambling
             }
         }
         
         print_info(f"Requesting analysis from Ollama model '{OLLAMA_MODEL}'...")
         
         # Get configurable timeout for slow servers
-        ai_timeout = int(os.getenv("AI_TIMEOUT", "60"))  # Default 60s, configurable up to 180s
-        print_info(f"⏳ Processing... (max {ai_timeout} seconds for server compatibility)")
+        ai_timeout = int(os.getenv("AI_TIMEOUT", "45"))  # Reduced default for faster fallback
+        print_info(f"⏳ Processing... (max {ai_timeout} seconds)")
         
         # Configurable timeout with retry for Ubuntu servers
         max_retries = 2
@@ -370,88 +399,20 @@ Saran: [1 kalimat]"""
 Masalah: AI analysis menghasilkan output yang perlu dibersihkan
 Saran: Review manual hasil tes untuk mendapatkan insight keamanan yang tepat"""
             
-            # Check if response seems truncated - simplified detection
-            if suggestion:
-                # Only check for obvious truncation indicators
-                is_truncated = (
-                    suggestion.endswith('...') or 
-                    suggestion.endswith('ter') or  
-                    suggestion.endswith('men') or
-                    suggestion.endswith('kan') or
-                    suggestion.endswith('dan') or
-                    suggestion.endswith('yang') or
-                    suggestion.endswith(',') or
-                    # Check if too short (likely truncated)
-                    len(suggestion) < 150
-                )
-                
-                if is_truncated:
-                    print_warning("⚠️ Response appears truncated, requesting completion...")
-                    
-                    # Simple continuation request
-                    continue_prompt = f"""Lanjutkan analisis yang belum selesai ini:
-
-{suggestion}
-
-Lanjutkan dari bagian yang terpotong dan selesaikan analisis:"""
-                    
-                    continue_data = {
-                        "model": OLLAMA_MODEL,
-                        "prompt": continue_prompt,
-                        "stream": False,
-                        "options": {
-                            "temperature": 0.5,
-                            "top_p": 0.9,
-                            "num_predict": 500,      # Enough for completion
-                            "num_ctx": 2048,
-                            "top_k": 40
-                        }
-                    }
-                    
-                    try:
-                        continue_response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", 
-                                                        json=continue_data, timeout=90)
-                        if continue_response.status_code == 200:
-                            continue_json = continue_response.json()
-                            if 'response' in continue_json:
-                                continuation = continue_json['response'].strip()
-                                
-                                # Clean continuation more thoroughly
-                                if '<think>' in continuation:
-                                    import re
-                                    continuation = re.sub(r'<think>.*?</think>', '', continuation, flags=re.DOTALL)
-                                    continuation = re.sub(r'</?think>', '', continuation)
-                                    continuation = continuation.strip()
-                                    
-                                    # Remove thinking-style content
-                                    lines = continuation.split('\n')
-                                    cleaned_lines = []
-                                    for line in lines:
-                                        if any(phrase in line.lower() for phrase in [
-                                            'baik, saya akan', 'mari kita', 'pertama-tama',
-                                            'sekarang mari', 'analisis keamanan lanjutan',
-                                            'mari kita lanjutkan'
-                                        ]):
-                                            continue
-                                        if line.strip():
-                                            cleaned_lines.append(line)
-                                    continuation = '\n'.join(cleaned_lines).strip()
-                                
-                                if continuation and len(continuation) > 30:
-                                    suggestion = suggestion + "\n\n" + continuation
-                                    print_success("✅ Got continuation response")
-                    except Exception as e:
-                        print_warning(f"Could not get continuation: {e}")
-                
-                print_success("✅ AI analysis completed successfully")
-                print_info(f"📊 Response length: {len(suggestion)} characters")
-                return suggestion
-            else:
-                print_warning("⚠️ Ollama returned empty response after cleaning")
-                return f"AI analysis tidak menghasilkan output untuk '{test_name}'. Review manual diperlukan."
+            # Validate completeness - Simple check
+            if suggestion and len(suggestion) > 50:
+                # Check if it has the expected format
+                if any(keyword in suggestion for keyword in ['Status:', 'Masalah:', 'Saran:']):
+                    print_success("✅ AI analysis completed successfully")
+                    print_info(f"📊 Response length: {len(suggestion)} characters")
+                    return suggestion
+            
+            # If response is incomplete, create structured fallback
+            print_warning("⚠️ AI response incomplete, creating structured analysis...")
+            return create_enhanced_fallback(test_name, raw_output, suggestion)
         else:
             print_warning("⚠️ Unexpected Ollama response format")
-            return f"AI analysis gagal (format response tidak valid) untuk '{test_name}'"
+            return create_fallback_analysis(test_name, raw_output, "Invalid response format")
             
     except KeyboardInterrupt:
         print_warning(f"🛑 AI analysis dibatalkan oleh user untuk '{test_name}'")
