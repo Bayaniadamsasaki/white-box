@@ -241,7 +241,7 @@ def get_ollama_suggestion(test_name, raw_output):
 
     prompt = f"""Analisis singkat '{test_name}':
 
-Data: {raw_output[:300]}
+Data: {raw_output[:1000]}
 
 Jawab SINGKAT (maks 3 baris):
 Status: [AMAN/BAHAYA/PERHATIAN]
