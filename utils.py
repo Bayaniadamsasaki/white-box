@@ -270,15 +270,16 @@ def get_ollama_suggestion(test_name, raw_output):
         print_info("🔧 AI analysis disabled - using fallback analysis only")
         return create_fallback_analysis(test_name, raw_output, "AI disabled for server performance")
 
-    # Simplified prompt for better consistency
-    prompt = f"""Analisis '{test_name}':
+    # Simple but effective prompt 
+    prompt = f"""Analisis keamanan: {test_name}
 
-Data: {raw_output[:500]}
+Data:
+{raw_output[:300]}
 
-Format respons:
+Jawab dengan format:
 Status: AMAN/BAHAYA/PERHATIAN
-Masalah: [satu kalimat singkat]  
-Saran: [satu kalimat singkat]"""
+Masalah: [masalah keamanan]
+Saran: [solusi perbaikan]"""
 
     try:
         # Enhanced Ollama diagnostics
@@ -324,9 +325,9 @@ Saran: [satu kalimat singkat]"""
                         "temperature": ai_temperature,
                         "num_predict": current_num_predict,
                         "num_ctx": 1024,
-                        "top_k": 5,
-                        "top_p": 0.8,
-                        "stop": ["\n\n", "---"]
+                        "top_k": 10,
+                        "top_p": 0.9
+                        # Hapus stop tokens yang terlalu agresif
                     }
                 }
                 
@@ -342,16 +343,33 @@ Saran: [satu kalimat singkat]"""
                 
                 suggestion = response_json['response'].strip()
                 
-                # Validasi kelengkapan
+                # Validasi kelengkapan yang lebih ketat
                 if suggestion and len(suggestion) > min_length:
                     # Cek format yang diharapkan
-                    if all(keyword in suggestion for keyword in ['Status:', 'Masalah:', 'Saran:']):
-                        # Cek tanda-tanda respons terpotong
-                        truncation_signs = ['...', '(hasil dipotong)', 'terpotong', 'incomplete']
+                    has_status = 'Status:' in suggestion or 'status:' in suggestion.lower()
+                    has_masalah = 'Masalah:' in suggestion or 'masalah:' in suggestion.lower()
+                    has_saran = 'Saran:' in suggestion or 'saran:' in suggestion.lower() or 'rekomendasi' in suggestion.lower()
+                    
+                    if has_status and has_masalah and has_saran:
+                        # Cek tanda-tanda respons terpotong yang lebih lengkap
+                        truncation_signs = ['...', '(hasil dipotong)', 'terpotong', 'incomplete', 'truncated', 'cut off']
                         is_truncated = any(sign in suggestion.lower() for sign in truncation_signs)
-                        ends_abruptly = not suggestion.strip().endswith(('.', '!', '?', ':', ';'))
                         
-                        if not (is_truncated or ends_abruptly):
+                        # Cek apakah berakhir dengan tiba-tiba (tidak ada penutup yang baik)
+                        last_lines = suggestion.strip().split('\n')[-3:]  # 3 baris terakhir
+                        last_text = ' '.join(last_lines).strip()
+                        
+                        # Respons dianggap lengkap jika berakhir dengan tanda baca atau kata penutup
+                        ends_properly = (
+                            last_text.endswith(('.', '!', '?', ':', ';')) or
+                            any(word in last_text.lower() for word in ['selesai', 'lengkap', 'akhir', 'terima kasih', 'demikian'])
+                        )
+                        
+                        # Cek apakah ada indikasi respons terpotong di tengah kalimat
+                        middle_cutoff = any(line.endswith(('dan', 'atau', 'dengan', 'untuk', 'dari', 'ke', 'yang')) 
+                                          for line in suggestion.split('\n')[-5:])
+                        
+                        if not (is_truncated or middle_cutoff) and (ends_properly or len(suggestion) > 800):
                             print_success(f"✅ AI analysis berhasil lengkap (attempt {attempt + 1})")
                             print_info(f"📊 Response length: {len(suggestion)} characters")
                             return suggestion
