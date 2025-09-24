@@ -308,29 +308,31 @@ Saran: [satu kalimat singkat]"""
         
         print_info(f"✅ Ollama OK. Model: {OLLAMA_MODEL}")
         
-        # Prepare request for Ollama with optimized parameters for complete responses
+        # Baca pengaturan AI dari .env
+        ai_num_predict = int(os.getenv("AI_NUM_PREDICT", "300"))
+        ai_temperature = float(os.getenv("AI_TEMPERATURE", "0.1"))
+        
+        # Prepare request for Ollama dengan parameter yang dapat dikonfigurasi
         data = {
             "model": OLLAMA_MODEL,
             "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature": 0.1,      # Very low for consistency
-                "num_predict": 200,      # Increased for complete 3-line responses
-                "num_ctx": 1024,         # Sufficient context
-                "top_k": 5,              # Very focused
+                "temperature": ai_temperature,           # Dari .env
+                "num_predict": ai_num_predict,          # Dari .env
+                "num_ctx": 1024,
+                "top_k": 5,
                 "top_p": 0.8,
-                "stop": ["\n\n", "---"]  # Stop tokens to prevent rambling
+                "stop": ["\n\n", "---"]
             }
         }
         
         print_info(f"Requesting analysis from Ollama model '{OLLAMA_MODEL}'...")
         
-        # Get configurable timeout for slow servers
-        ai_timeout = int(os.getenv("AI_TIMEOUT", "45"))  # Reduced default for faster fallback
-        print_info(f"⏳ Processing... (max {ai_timeout} seconds)")
-        
-        # Configurable timeout with retry for Ubuntu servers
-        max_retries = 2
+        # Baca pengaturan timeout dan retry dari .env
+        ai_timeout = int(os.getenv("AI_TIMEOUT", "180"))
+        max_retries = int(os.getenv("AI_RETRY_ATTEMPTS", "3"))
+        print_info(f"⏳ Memproses... (maksimal {ai_timeout} detik, {max_retries} percobaan)")
         for attempt in range(max_retries):
             try:
                 response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json=data, timeout=ai_timeout)
