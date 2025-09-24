@@ -21,8 +21,21 @@ def run_hardening_checks():
     test_name = "Pemeriksaan Pengerasan (Hardening) Sistem"
     print_header(test_name)
 
-    if os.geteuid() != 0:
-        print_warning(REQUIRED_ROOT_MESSAGE)
+    try:
+        # Check if running as root/admin (Linux/Windows compatibility)
+        import getpass
+        import platform
+        if platform.system() == "Windows":
+            import ctypes
+            is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+            if not is_admin:
+                print_warning(REQUIRED_ROOT_MESSAGE)
+        else:
+            if os.geteuid() != 0:
+                print_warning(REQUIRED_ROOT_MESSAGE)
+    except:
+        # Skip privilege check if not available
+        pass
 
     all_raw_outputs = []
 
@@ -166,11 +179,16 @@ def run_hardening_checks():
         captured_lines.append(f"Memulai: {desc}")
         print_info(f"Memulai: {desc}")
 
-        if os.geteuid() != 0:
-            msg = f"Peringatan: Membaca {SHADOW_PATH} memerlukan hak root. Pengecekan dilewati."
-            print_warning(msg)
-            captured_lines.append(msg)
-            return "\n".join(captured_lines)
+        # Skip root check on Windows, file won't exist anyway
+        try:
+            import platform
+            if platform.system() != "Windows" and hasattr(os, 'geteuid') and os.geteuid() != 0:
+                msg = f"Peringatan: Membaca {SHADOW_PATH} memerlukan hak root. Pengecekan dilewati."
+                print_warning(msg)
+                captured_lines.append(msg)
+                return "\n".join(captured_lines)
+        except:
+            pass
 
         content = capture_read_file_content(SHADOW_PATH, "Baca Shadow File")
         captured_lines.append(content)
@@ -248,8 +266,12 @@ def run_hardening_checks():
 
     if not combined_raw_output.strip():
         msg = "Tidak ada output yang dihasilkan dari pemeriksaan hardening."
-        if os.geteuid() != 0:
-            msg = f"{REQUIRED_ROOT_MESSAGE}\n{msg} Kemungkinan karena kurangnya hak akses root."
+        try:
+            import platform
+            if platform.system() != "Windows" and hasattr(os, 'geteuid') and os.geteuid() != 0:
+                msg = f"{REQUIRED_ROOT_MESSAGE}\n{msg} Kemungkinan karena kurangnya hak akses root."
+        except:
+            pass
         print_warning(msg)
         combined_raw_output = msg
 

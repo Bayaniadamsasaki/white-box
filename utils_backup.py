@@ -135,13 +135,9 @@ def capture_read_file_content(file_path, test_description, suppress_output=False
     if os.path.exists(file_path):
         try:
             if not os.access(file_path, os.R_OK):
-                 try:
-                     # Check if running as admin on Windows or root on Linux
-                     import getpass
-                     if getpass.getuser() != 'root':  # Simple check for non-root user
-                         if not suppress_output: print_warning(f"Tidak ada izin baca untuk {file_path}. Hasil mungkin tidak lengkap.")
-                 except:
-                     pass  # Skip permission check on Windows
+                 if os.geteuid() != 0:
+                     
+                     if not suppress_output: print_warning(f"Tidak ada izin baca untuk {file_path}. Hasil mungkin tidak lengkap.")
             
             with open(file_path, "r", errors='ignore') as f:
                 content = f.read() 
@@ -260,7 +256,7 @@ Masalah: {masalah}
 Saran: {saran}"""
 
 def get_ollama_suggestion(test_name, raw_output):
-    """Get security analysis from local Ollama model with comprehensive anti-truncation measures"""
+    """Get security analysis from local Ollama model"""
     if not raw_output or not raw_output.strip():
         return "Tidak ada output mentah yang dihasilkan oleh tes, jadi tidak ada saran yang diminta dari AI."
 
@@ -277,7 +273,7 @@ Data: {raw_output[:500]}
 
 Format respons:
 Status: AMAN/BAHAYA/PERHATIAN
-Masalah: [satu kalimat singkat]  
+Masalah: [satu kalimat singkat]
 Saran: [satu kalimat singkat]"""
 
     try:
@@ -297,89 +293,288 @@ Saran: [satu kalimat singkat]"""
             print_warning("Ollama connection timeout.")
             return create_fallback_analysis(test_name, raw_output, "Connection timeout")
         
+        # Check if model is available
+        try:
+            models_response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
+            models_data = models_response.json()
+            available_models = [model['name'] for model in models_data.get('models', [])]
+            
+            if OLLAMA_MODEL not in available_models:
+                print_warning(f"Model {OLLAMA_MODEL} tidak ditemukan. Available: {available_models}")
+                return create_fallback_analysis(test_name, raw_output, f"Model {OLLAMA_MODEL} not found")
+                
+        except Exception as e:
+            print_warning(f"Cannot check available models: {e}")
+        
         print_info(f"✅ Ollama OK. Model: {OLLAMA_MODEL}")
         
-        # Baca pengaturan AI dari .env dengan nilai tinggi untuk anti-truncation
-        ai_num_predict = int(os.getenv("AI_NUM_PREDICT", "500"))
+        # Baca pengaturan AI dari .env
+        ai_num_predict = int(os.getenv("AI_NUM_PREDICT", "300"))
         ai_temperature = float(os.getenv("AI_TEMPERATURE", "0.1"))
-        ai_timeout = int(os.getenv("AI_TIMEOUT", "240"))
-        max_retries = int(os.getenv("AI_RETRY_ATTEMPTS", "5"))
-        min_length = int(os.getenv("AI_MIN_RESPONSE_LENGTH", "200"))
         
-        print_info(f"⏳ Memproses... (AI_NUM_PREDICT={ai_num_predict}, timeout={ai_timeout}s, {max_retries} percobaan)")
+        # Prepare request for Ollama dengan parameter yang dapat dikonfigurasi
+        data = {
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": ai_temperature,           # Dari .env
+                "num_predict": ai_num_predict,          # Dari .env
+                "num_ctx": 1024,
+                "top_k": 5,
+                "top_p": 0.8,
+                "stop": ["\n\n", "---"]
+            }
+        }
+        
+        print_info(f"Requesting analysis from Ollama model '{OLLAMA_MODEL}'...")
+        
+        # Baca pengaturan timeout dan retry dari .env
+        ai_timeout = int(os.getenv("AI_TIMEOUT", "180"))
+        max_retries = int(os.getenv("AI_RETRY_ATTEMPTS", "3"))
+        print_info(f"⏳ Memproses... (maksimal {ai_timeout} detik, {max_retries} percobaan)")
         
         # Loop untuk retry dengan validasi respons
-        suggestion = ""
         for attempt in range(max_retries):
             try:
-                # Prepare request dengan parameter yang disesuaikan per attempt
-                current_num_predict = ai_num_predict + (attempt * 150)  # Tambah 150 per attempt
-                current_timeout = ai_timeout + (attempt * 30)  # Tambah 30s per attempt
-                
-                data = {
-                    "model": OLLAMA_MODEL,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": ai_temperature,
-                        "num_predict": current_num_predict,
-                        "num_ctx": 1024,
-                        "top_k": 5,
-                        "top_p": 0.8,
-                        "stop": ["\n\n", "---"]
-                    }
-                }
-                
-                print_info(f"Attempt {attempt + 1}/{max_retries}: num_predict={current_num_predict}, timeout={current_timeout}s")
-                
-                response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json=data, timeout=current_timeout)
+                response = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json=data, timeout=ai_timeout)
                 response.raise_for_status()
                 
-                # Parse respons
+                # Parse dan validasi respons
                 response_json = response.json()
                 if 'response' not in response_json:
-                    continue
+                    if attempt < max_retries - 1:
+                        print_warning("⚠️ Invalid response format, retrying...")
+                        continue
+                    else:
+                        raise Exception("Invalid response format")
                 
                 suggestion = response_json['response'].strip()
                 
-                # Validasi kelengkapan
+                # Validasi kelengkapan respons
+                min_length = int(os.getenv("AI_MIN_RESPONSE_LENGTH", "200"))
+                
                 if suggestion and len(suggestion) > min_length:
                     # Cek format yang diharapkan
                     if all(keyword in suggestion for keyword in ['Status:', 'Masalah:', 'Saran:']):
                         # Cek tanda-tanda respons terpotong
                         truncation_signs = ['...', '(hasil dipotong)', 'terpotong', 'incomplete']
                         is_truncated = any(sign in suggestion.lower() for sign in truncation_signs)
+                        
+                        # Cek apakah berakhir dengan tiba-tiba (tidak ada tanda baca)
                         ends_abruptly = not suggestion.strip().endswith(('.', '!', '?', ':', ';'))
                         
                         if not (is_truncated or ends_abruptly):
-                            print_success(f"✅ AI analysis berhasil lengkap (attempt {attempt + 1})")
+                            # Respons lengkap dan baik
+                            print_success("✅ AI analysis completed successfully")
                             print_info(f"📊 Response length: {len(suggestion)} characters")
-                            return suggestion
+                            break  # Exit retry loop dengan respons yang baik
                 
-                print_warning(f"⚠️ Respons tidak lengkap pada attempt {attempt + 1} (len={len(suggestion)})")
-                
+                # Jika sampai sini berarti respons tidak lengkap
+                if attempt < max_retries - 1:
+                    print_warning(f"⚠️ Respons tidak lengkap (attempt {attempt + 1}/{max_retries}), mencoba ulang dengan parameter lebih tinggi...")
+                    # Naikkan num_predict untuk retry selanjutnya
+                    data["options"]["num_predict"] = min(ai_num_predict + (attempt * 200), 1000)
+                    ai_timeout += 30  # Tambah timeout juga
+                    continue
+                else:
+                    # Retry terakhir gagal, gunakan fallback
+                    print_warning("⚠️ Semua percobaan gagal, menggunakan fallback analysis...")
+                    break
+                    
             except requests.exceptions.Timeout:
-                print_warning(f"⏰ Timeout pada attempt {attempt + 1}")
-                continue
-            except Exception as e:
-                print_warning(f"Error pada attempt {attempt + 1}: {e}")
-                continue
+                if attempt < max_retries - 1:
+                    print_warning(f"⏰ Timeout attempt {attempt + 1}, retrying with longer timeout...")
+                    ai_timeout += 60  # Add 60s for next attempt
+                    continue
+                else:
+                    raise  # Final attempt failed
         
-        # Semua percobaan gagal
-        print_warning("⚠️ Semua percobaan AI gagal, menggunakan enhanced fallback...")
-        return create_enhanced_fallback(test_name, raw_output, suggestion)
-        
+        response_json = response.json()
+        if 'response' in response_json:
+            suggestion = response_json['response'].strip()
+            
+            # Clean up DeepSeek-R1 thinking content but preserve analysis
+            if any(phrase in suggestion.lower() for phrase in [
+                'hmm', 'okay', 'wait', 'the user wants', 'thinking...'
+            ]):
+                import re
+                
+                # Remove thinking tags
+                suggestion = re.sub(r'<think>.*?</think>', '', suggestion, flags=re.DOTALL)
+                suggestion = re.sub(r'</?think>', '', suggestion)
+                suggestion = re.sub(r'Thinking\.\.\..*?done thinking\.', '', suggestion, flags=re.DOTALL)
+                
+                # Split into lines and filter
+                lines = suggestion.split('\n')
+                cleaned_lines = []
+                
+                for line in lines:
+                    line_clean = line.strip()
+                    if not line_clean:
+                        continue
+                        
+                    # Keep lines that look like actual analysis results
+                    if any(keyword in line for keyword in [
+                        'Status:', 'Masalah:', 'Saran:', 'AMAN', 'BAHAYA', 
+                        'SSH', 'root login', 'password', 'authentication',
+                        'konfigurasi', 'keamanan', 'server'
+                    ]):
+                        cleaned_lines.append(line)
+                        continue
+                    
+                    # Skip obvious thinking lines
+                    line_lower = line.lower()
+                    if any(skip_phrase in line_lower for skip_phrase in [
+                        'hmm', 'okay', 'wait', 'aku melihat', 'aku perlu',
+                        'the user wants', 'user meminta', 'dalam konteks',
+                        'hal-hal yang penting', 'penggunaan algoritma'
+                    ]):
+                        continue
+                    
+                    # Keep other substantial lines
+                    if len(line_clean) > 20:
+                        cleaned_lines.append(line)
+                
+                suggestion = '\n'.join(cleaned_lines).strip()
+                
+                # If result is too short, create simple fallback
+                if len(suggestion) < 100:
+                    suggestion = f"""Status: PERLU ANALISIS MANUAL
+Masalah: AI analysis menghasilkan output yang perlu dibersihkan
+Saran: Review manual hasil tes untuk mendapatkan insight keamanan yang tepat"""
+            
+            # Validasi kelengkapan respons dengan deteksi truncation
+            min_length = int(os.getenv("AI_MIN_RESPONSE_LENGTH", "200"))
+            
+            if suggestion and len(suggestion) > min_length:
+                # Cek format yang diharapkan
+                if all(keyword in suggestion for keyword in ['Status:', 'Masalah:', 'Saran:']):
+                    # Cek tanda-tanda respons terpotong
+                    truncation_signs = ['...', '(hasil dipotong)', 'terpotong', 'incomplete']
+                    is_truncated = any(sign in suggestion.lower() for sign in truncation_signs)
+                    
+                    # Cek apakah berakhir dengan tiba-tiba (tidak ada tanda baca)
+                    ends_abruptly = not suggestion.strip().endswith(('.', '!', '?', ':', ';'))
+                    
+                    if (is_truncated or ends_abruptly) and attempt < max_retries - 1:
+                        print_warning(f"⚠️ Terdeteksi respons AI terpotong (attempt {attempt + 1}), mencoba ulang dengan parameter lebih tinggi...")
+                        # Naikkan num_predict untuk retry selanjutnya
+                        data["options"]["num_predict"] = min(ai_num_predict + (attempt * 200), 1000)
+                        continue  # Retry dengan parameter yang lebih besar
+                    else:
+                        print_success("✅ AI analysis completed successfully")
+                        print_info(f"📊 Response length: {len(suggestion)} characters")
+                        return suggestion
+            
+            # Jika respons terlalu pendek dan masih ada attempt tersisa
+            if attempt < max_retries - 1:
+                print_warning(f"⚠️ Respons AI terlalu pendek ({len(suggestion) if suggestion else 0} chars), mencoba ulang...")
+                data["options"]["num_predict"] = min(ai_num_predict + (attempt * 200), 1000)
+                continue
+            
+            # Jika masih terpotong setelah semua retry
+            print_warning("⚠️ AI response incomplete after all retries, creating enhanced fallback...")
+            return create_enhanced_fallback(test_name, raw_output, suggestion)
+        else:
+            print_warning("⚠️ Unexpected Ollama response format")
+            return create_fallback_analysis(test_name, raw_output, "Invalid response format")
+            
     except KeyboardInterrupt:
         print_warning(f"🛑 AI analysis dibatalkan oleh user untuk '{test_name}'")
-        return create_enhanced_fallback(test_name, raw_output, "")
+        return f"""**STATUS:** PERLU REVIEW MANUAL
+
+**TEMUAN:**
+• Analisis AI dibatalkan atau timeout
+• Hasil tes mentah tersedia untuk review manual
+
+**REKOMENDASI:**
+1. Review manual hasil tes: {test_name}
+    except requests.exceptions.Timeout:
+        print_warning(f"⏰ Ollama timeout untuk '{test_name}' - Using fallback analysis")
+        return create_fallback_analysis(test_name, raw_output, "AI timeout after 30s")
+    except requests.exceptions.ConnectionError:
+        print_warning(f"🔌 Gagal terhubung ke Ollama untuk '{test_name}'")
+        return create_fallback_analysis(test_name, raw_output, "Ollama offline")
+
+**REKOMENDASI:**
+1. Jalankan: ollama serve
+2. Pastikan model tersedia: ollama list
+3. Atau disable AI: set USE_OLLAMA=false di .env
+
+**PRIORITAS:** Fix Ollama connection atau review manual"""
+    except requests.exceptions.RequestException as e:
+        print_warning(f"📡 Error komunikasi Ollama untuk '{test_name}': {e}")
+        return f"""**STATUS:** ERROR - PERLU REVIEW
+
+**TEMUAN:**
+• Error komunikasi dengan Ollama: {str(e)[:100]}
+• Mungkin ada masalah network atau konfigurasi
+
+**REKOMENDASI:**
+1. Check Ollama status: ollama list
+2. Restart Ollama service
+3. Review manual hasil tes sementara
+
+**PRIORITAS:** Troubleshoot Ollama atau manual review"""
     except Exception as e:
-        print_warning(f"🔌 Error Ollama untuk '{test_name}': {e}")
-        return create_fallback_analysis(test_name, raw_output, f"AI error: {e}")
+        print_warning(f"❌ Error tidak terduga dengan Ollama untuk '{test_name}': {e}")
+        return f"""**STATUS:** UNEXPECTED ERROR - PERLU REVIEW
+
+**TEMUAN:**
+• Error tidak terduga: {str(e)[:100]}
+• Sistem AI mengalami masalah
+
+**REKOMENDASI:**
+1. Review manual hasil tes: {test_name}
+2. Check log sistem untuk detail error
+3. Restart aplikasi jika perlu
+
+**PRIORITAS:** Manual review segera diperlukan"""
 
 def get_ai_suggestion(test_name, raw_output):
-    """Wrapper function for backward compatibility"""
+    """Get security analysis from Ollama AI model"""
     return get_ollama_suggestion(test_name, raw_output)
 
-def wait_for_return():
-    """Wait for user to press Enter to continue"""
-    input(f"\n{Colors.OKCYAN}Tekan Enter untuk kembali ke menu...{Colors.ENDC}")
+if __name__ == '__main__':
+    print_header("Contoh Penggunaan Utilitas Cetak")
+    print_success("Ini adalah pesan sukses.")
+    print_warning("Ini adalah pesan peringatan.")
+    print_danger("Ini adalah pesan bahaya/error.")
+    print_info("Ini adalah pesan informasi.")
+
+    test_name_example = "Contoh Test Keamanan Internal"
+    print_header("Contoh capture_command_output (normal)")
+    cmd_output_normal = capture_command_output(["echo", "Ini output sukses"], "Tes Echo Sukses")
+    print_info(f"Captured (untuk log/telegram):\n{cmd_output_normal}\n")
+
+    print_header("Contoh capture_command_output (gagal)")
+    cmd_output_gagal = capture_command_output(["ls", "/folderTidakAda"], "Tes ls Gagal")
+    print_info(f"Captured (untuk log/telegram):\n{cmd_output_gagal}\n")
+
+    print_header("Contoh capture_command_output (sukses tanpa output)")
+
+    cmd_output_no_stdout = capture_command_output(["true"], "Tes Perintah True")
+    print_info(f"Captured (untuk log/telegram):\n{cmd_output_no_stdout}\n")
+
+    dummy_file_path = "dummy_test_file_utils.txt"
+    print_header("Contoh capture_read_file_content (file ada)")
+    with open(dummy_file_path, "w") as df:
+        df.write("Baris pertama.\nBaris kedua.")
+    file_content_normal = capture_read_file_content(dummy_file_path, "Tes Baca File Ada")
+    print_info(f"Captured (untuk log/telegram):\n{file_content_normal}\n")
+    os.remove(dummy_file_path)
+
+    print_header("Contoh capture_read_file_content (file kosong)")
+    with open(dummy_file_path, "w") as df:
+        df.write("")
+    file_content_empty = capture_read_file_content(dummy_file_path, "Tes Baca File Kosong")
+    print_info(f"Captured (untuk log/telegram):\n{file_content_empty}\n")
+    os.remove(dummy_file_path)
+    
+    print_header("Contoh capture_read_file_content (file tidak ada)")
+    file_content_not_found = capture_read_file_content("file_tidak_ada_sama_sekali.txt", "Tes Baca File Tidak Ada")
+    print_info(f"Captured (untuk log/telegram):\n{file_content_not_found}\n")
+    ai_advice = get_ai_suggestion(test_name_example, cmd_output_normal)
+
+    send_to_telegram(test_name_example, cmd_output_normal, ai_advice)
