@@ -316,39 +316,91 @@ def _extract_named_field(lines, field_name):
             return line.split(":", 1)[1].strip()
     return ""
 
+def _extract_multiline_field(lines, field_name):
+    target = field_name.lower() + ":"
+    stop_prefixes = ("status:", "masalah:", "saran:", "catatan:", "tambahan:")
+    collecting = False
+    parts = []
+
+    for line in lines:
+        low = line.lower()
+        if low.startswith(target):
+            value = line.split(":", 1)[1].strip()
+            if value:
+                parts.append(value)
+            collecting = True
+            continue
+
+        if collecting:
+            if low.startswith(stop_prefixes):
+                break
+            parts.append(line)
+
+    return " ".join(parts).strip()
+
+def _build_recommendation_steps(raw_output, max_steps=3):
+    low = str(raw_output or "").lower()
+    steps = []
+
+    if "permitrootlogin yes" in low or "passwordauthentication yes" in low:
+        steps.append("Nonaktifkan PermitRootLogin dan PasswordAuthentication, lalu pakai SSH key-based authentication.")
+    if "failed login" in low or "brute force" in low:
+        steps.append("Aktifkan fail2ban dan batasi percobaan login berulang pada layanan akses remote.")
+    if "world-writable" in low or "uid 0" in low or "password kosong" in low:
+        steps.append("Audit akun/permission sensitif, hapus akses berlebih, dan perbaiki ownership serta mode file.")
+    if "open" in low or "listening" in low or "port" in low:
+        steps.append("Tutup port yang tidak diperlukan, dan batasi layanan internal agar tidak terekspos publik.")
+    if "auditd tidak aktif" in low or "selinux disabled" in low or "apparmor disabled" in low:
+        steps.append("Aktifkan auditd/SELinux/AppArmor sesuai distro untuk meningkatkan visibility dan proteksi host.")
+    if "not found" in low or "timeout" in low or "refused" in low or "failed" in low:
+        steps.append("Verifikasi paket terpasang, status service, dan dependensi command sebelum rerun scanning.")
+
+    if not steps:
+        steps = [
+            "Validasi ulang konfigurasi layanan terkait temuan utama dan pastikan baseline hardening diterapkan.",
+            "Lakukan retest setelah perbaikan untuk memastikan status risiko menurun.",
+            "Tambahkan monitoring berkala agar regresi konfigurasi cepat terdeteksi."
+        ]
+
+    unique_steps = []
+    seen = set()
+    for step in steps:
+        key = step.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_steps.append(step)
+        if len(unique_steps) >= max_steps:
+            break
+
+    return unique_steps
+
 def _compact_suggestion_for_telegram(suggestion, raw_output):
     normalized = _normalize_ai_status_in_text(suggestion, raw_output)
     lines = [l.strip() for l in normalized.splitlines() if l.strip()]
 
     status = _extract_named_field(lines, "Status")
-    masalah = _extract_named_field(lines, "Masalah")
-    saran = _extract_named_field(lines, "Saran")
+    masalah = _extract_multiline_field(lines, "Masalah")
+    saran = _extract_multiline_field(lines, "Saran")
+    catatan = _extract_multiline_field(lines, "Catatan") or _extract_multiline_field(lines, "Tambahan")
 
     status = _normalize_status_level(status, _infer_risk_level(raw_output))
     if not masalah:
         signal = _extract_signal_lines(raw_output, limit=1)
         masalah = signal[0] if signal else "Perlu review manual singkat"
     if not saran:
-        saran = "Lakukan validasi konfigurasi dan perbaiki temuan utama di atas"
+        saran = "Lakukan validasi konfigurasi menyeluruh lalu prioritaskan perbaikan pada temuan berisiko tertinggi."
 
-    # Ambil konteks tambahan AI jika ada baris non-judul lain
-    extra_lines = []
-    for line in lines:
-        low = line.lower()
-        if low.startswith("status:") or low.startswith("masalah:") or low.startswith("saran:"):
-            continue
-        extra_lines.append(line)
-        if len(extra_lines) >= 2:
-            break
+    masalah = _clip_text(re.sub(r"\s+", " ", masalah), 520)
+    saran = _clip_text(re.sub(r"\s+", " ", saran), 900)
+    catatan = _clip_text(re.sub(r"\s+", " ", catatan), 500) if catatan else ""
 
-    masalah = _clip_text(re.sub(r"\s+", " ", masalah), 420)
-    saran = _clip_text(re.sub(r"\s+", " ", saran), 560)
+    langkah = _build_recommendation_steps(raw_output, max_steps=3)
+    langkah_text = "\n".join(f"{idx}. {step}" for idx, step in enumerate(langkah, 1))
 
-    formatted = f"Status: {status}\nMasalah: {masalah}\nSaran: {saran}"
-    if extra_lines:
-        tambahan = " ".join(extra_lines)
-        tambahan = _clip_text(re.sub(r"\s+", " ", tambahan), 380)
-        formatted += f"\nCatatan: {tambahan}"
+    formatted = f"Status: {status}\nMasalah: {masalah}\nSaran: {saran}\nLangkah Prioritas:\n{langkah_text}"
+    if catatan:
+        formatted += f"\nCatatan: {catatan}"
     return formatted
 
 def _split_text_chunks(text, max_len=2500):
@@ -384,14 +436,14 @@ def send_to_telegram(test_name, result, suggestion):
         concise_suggestion = _compact_suggestion_for_telegram(suggestion, result)
 
         concise_result = _clip_text(concise_result, 2200)
-        concise_suggestion = _clip_text(concise_suggestion, 1400)
+        concise_suggestion = _clip_text(concise_suggestion, 1800)
 
         message = f"""*Pemeriksaan:* {escape_markdown_v2(test_name)}
 
-    *Hasil Test:*
+*Hasil Test:*
 {escape_markdown_v2(concise_result)}
 
-    *Analisis AI:*
+*Analisis AI:*
 {escape_markdown_v2(concise_suggestion)}
 """
 
@@ -402,12 +454,12 @@ def send_to_telegram(test_name, result, suggestion):
             concise_result = _clip_text(concise_result, allowed_result)
             message = f"""*Pemeriksaan:* {escape_markdown_v2(test_name)}
 
-    *Hasil Test:*
-    {escape_markdown_v2(concise_result)}
+        *Hasil Test:*
+        {escape_markdown_v2(concise_result)}
 
-    *Analisis AI:*
-    {escape_markdown_v2(concise_suggestion)}
-    """
+        *Analisis AI:*
+        {escape_markdown_v2(concise_suggestion)}
+        """
 
         _post_telegram_markdown(message)
 
