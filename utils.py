@@ -214,7 +214,7 @@ def send_to_telegram(test_name, result, suggestion):
 
 
 # Ollama Configuration
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 def create_fallback_analysis(test_name, raw_output, reason):
@@ -270,6 +270,10 @@ def get_ollama_suggestion(test_name, raw_output):
         print_info("🔧 AI analysis disabled - using fallback analysis only")
         return create_fallback_analysis(test_name, raw_output, "AI disabled for server performance")
 
+    if not OLLAMA_MODEL:
+        print_warning("⚠️ OLLAMA_MODEL belum di-set di .env. Menggunakan fallback analysis.")
+        return create_fallback_analysis(test_name, raw_output, "Missing OLLAMA_MODEL")
+
     # Simple but effective prompt 
     prompt = f"""Analisis keamanan: {test_name}
 
@@ -298,7 +302,7 @@ Saran: [solusi perbaikan]"""
             print_warning("Ollama connection timeout.")
             return create_fallback_analysis(test_name, raw_output, "Connection timeout")
         
-        print_info(f"✅ Ollama OK. Model: {OLLAMA_MODEL}")
+        print_info("✅ Ollama OK. Model diambil dari OLLAMA_MODEL (.env).")
         
         # Baca pengaturan AI dari .env dengan nilai tinggi untuk anti-truncation
         ai_num_predict = int(os.getenv("AI_NUM_PREDICT", "500"))

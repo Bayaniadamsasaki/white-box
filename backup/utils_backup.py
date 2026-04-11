@@ -210,7 +210,7 @@ def send_to_telegram(test_name, result, suggestion):
 
 
 # Ollama Configuration
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 def create_fallback_analysis(test_name, raw_output, reason):
@@ -266,6 +266,10 @@ def get_ollama_suggestion(test_name, raw_output):
         print_info("🔧 AI analysis disabled - using fallback analysis only")
         return create_fallback_analysis(test_name, raw_output, "AI disabled for server performance")
 
+    if not OLLAMA_MODEL:
+        print_warning("⚠️ OLLAMA_MODEL belum di-set di .env. Menggunakan fallback analysis.")
+        return create_fallback_analysis(test_name, raw_output, "Missing OLLAMA_MODEL")
+
     # Simplified prompt for better consistency
     prompt = f"""Analisis '{test_name}':
 
@@ -300,13 +304,13 @@ Saran: [satu kalimat singkat]"""
             available_models = [model['name'] for model in models_data.get('models', [])]
             
             if OLLAMA_MODEL not in available_models:
-                print_warning(f"Model {OLLAMA_MODEL} tidak ditemukan. Available: {available_models}")
-                return create_fallback_analysis(test_name, raw_output, f"Model {OLLAMA_MODEL} not found")
+                print_warning(f"Model dari OLLAMA_MODEL tidak ditemukan. Available: {available_models}")
+                return create_fallback_analysis(test_name, raw_output, "Model from OLLAMA_MODEL not found")
                 
         except Exception as e:
             print_warning(f"Cannot check available models: {e}")
         
-        print_info(f"✅ Ollama OK. Model: {OLLAMA_MODEL}")
+        print_info("✅ Ollama OK. Model diambil dari OLLAMA_MODEL (.env).")
         
         # Baca pengaturan AI dari .env
         ai_num_predict = int(os.getenv("AI_NUM_PREDICT", "300"))
@@ -327,7 +331,7 @@ Saran: [satu kalimat singkat]"""
             }
         }
         
-        print_info(f"Requesting analysis from Ollama model '{OLLAMA_MODEL}'...")
+        print_info("Requesting analysis from Ollama model yang diambil dari OLLAMA_MODEL...")
         
         # Baca pengaturan timeout dan retry dari .env
         ai_timeout = int(os.getenv("AI_TIMEOUT", "180"))
@@ -457,21 +461,13 @@ Saran: Review manual hasil tes untuk mendapatkan insight keamanan yang tepat"""
                     # Cek apakah berakhir dengan tiba-tiba (tidak ada tanda baca)
                     ends_abruptly = not suggestion.strip().endswith(('.', '!', '?', ':', ';'))
                     
-                    if (is_truncated or ends_abruptly) and attempt < max_retries - 1:
-                        print_warning(f"⚠️ Terdeteksi respons AI terpotong (attempt {attempt + 1}), mencoba ulang dengan parameter lebih tinggi...")
-                        # Naikkan num_predict untuk retry selanjutnya
-                        data["options"]["num_predict"] = min(ai_num_predict + (attempt * 200), 1000)
-                        continue  # Retry dengan parameter yang lebih besar
-                    else:
-                        print_success("✅ AI analysis completed successfully")
-                        print_info(f"📊 Response length: {len(suggestion)} characters")
-                        return suggestion
-            
-            # Jika respons terlalu pendek dan masih ada attempt tersisa
-            if attempt < max_retries - 1:
-                print_warning(f"⚠️ Respons AI terlalu pendek ({len(suggestion) if suggestion else 0} chars), mencoba ulang...")
-                data["options"]["num_predict"] = min(ai_num_predict + (attempt * 200), 1000)
-                continue
+                    if is_truncated or ends_abruptly:
+                        print_warning("⚠️ Terdeteksi respons AI terpotong pada tahap validasi akhir.")
+                        return create_enhanced_fallback(test_name, raw_output, suggestion)
+
+                    print_success("✅ AI analysis completed successfully")
+                    print_info(f"📊 Response length: {len(suggestion)} characters")
+                    return suggestion
             
             # Jika masih terpotong setelah semua retry
             print_warning("⚠️ AI response incomplete after all retries, creating enhanced fallback...")

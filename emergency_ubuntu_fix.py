@@ -13,12 +13,16 @@ import os
 load_dotenv()
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL")
 
 def test_minimal_generation():
     """Test with absolutely minimal settings"""
     print("🐧 Emergency Ubuntu Test - Ultra Minimal Settings")
     print("=" * 50)
+
+    if not OLLAMA_MODEL:
+        print("❌ OLLAMA_MODEL belum diset di .env")
+        return False, 0
     
     # Ultra minimal request
     data = {
@@ -37,7 +41,7 @@ def test_minimal_generation():
     }
     
     print("Testing ultra-minimal generation...")
-    print("Request:", json.dumps(data, indent=2))
+    print("Request siap (model diambil dari OLLAMA_MODEL)")
     
     start_time = time.time()
     
@@ -118,8 +122,8 @@ def recommend_emergency_fix():
    export OLLAMA_KEEP_ALIVE=1m
    sudo systemctl start ollama
    
-   # Switch to smaller model if possible
-   ollama pull tinyllama:1.1b  # Much faster than llama3.2:1b
+    # Switch to smaller model if possible
+    ollama pull <model-ringan>  # sesuaikan model ringan pilihan Anda
 
 2. **SYSTEM OPTIMIZATION:**
    # Increase swap space
@@ -154,7 +158,7 @@ def recommend_emergency_fix():
 5. **SERVER UPGRADE CONSIDERATION:**
    Current server appears severely resource-constrained.
    Consider:
-   - More RAM (minimum 4GB for llama3.2:1b)
+    - More RAM sesuai kebutuhan model pada OLLAMA_MODEL
    - Faster CPU/SSD
    - Or use cloud AI API instead of local Ollama
 """)
