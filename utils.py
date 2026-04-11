@@ -194,15 +194,16 @@ def _infer_risk_level(raw_output):
     text = (raw_output or "").lower()
 
     critical_patterns = [
-        "remote code execution", "rce", "privilege escalation", "compromise",
-        "exploit berhasil", "critical vulnerability", "unauthorized root"
+        "password kosong", "uid 0", "critical vulnerability", "remote code execution",
+        "privilege escalation", "unauthorized root", "world-writable"
     ]
     high_patterns = [
         "brute force", "failed login", "permitrootlogin yes", "passwordauthentication yes",
-        "world-writable", "auditd tidak aktif", "selinux disabled", "apparmor disabled"
+        "auditd tidak aktif", "selinux disabled", "apparmor disabled", "risiko keamanan serius"
     ]
     medium_patterns = [
-        "open port", "listening", "banner ssh", "ftp anonim", "warning", "outdated"
+        "open port", "listening", "banner ssh", "ftp anonim", "warning", "outdated",
+        "error", "failed", "refused", "timeout", "not found", "tidak aktif"
     ]
 
     if any(p in text for p in critical_patterns):
@@ -229,6 +230,88 @@ def _normalize_ai_status_in_text(suggestion_text, raw_output):
         lines.insert(0, f"Status: {fallback_level}")
 
     return "\n".join(lines).strip()
+
+def _extract_signal_lines(text, limit=3):
+    lines = [re.sub(r"\s+", " ", l.strip()) for l in str(text or "").splitlines() if l.strip()]
+    if not lines:
+        return []
+
+    critical_kw = ["kritis", "critical", "password kosong", "uid 0", "world-writable", "unauthorized", "privilege escalation"]
+    high_kw = ["bahaya", "danger", "risiko keamanan serius", "permitrootlogin yes", "passwordauthentication yes", "brute force"]
+    medium_kw = ["peringatan", "warning", "error", "failed", "timeout", "refused", "not found", "tidak aktif", "open port", "listening"]
+
+    scored = []
+    for idx, line in enumerate(lines):
+        low = line.lower()
+        score = 0
+        if any(k in low for k in critical_kw):
+            score = 4
+        elif any(k in low for k in high_kw):
+            score = 3
+        elif any(k in low for k in medium_kw) or line.startswith("[!]") or line.startswith("[-]"):
+            score = 2
+
+        if score > 0:
+            clipped = line[:177] + "..." if len(line) > 180 else line
+            scored.append((score, idx, clipped))
+
+    scored.sort(key=lambda x: (-x[0], x[1]))
+
+    picked = []
+    seen = set()
+    for _, _, line in scored:
+        key = line.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        picked.append(line)
+        if len(picked) >= limit:
+            break
+
+    return picked
+
+def _summarize_result_for_telegram(result):
+    signals = _extract_signal_lines(result, limit=3)
+    if signals:
+        return "\n".join(f"- {line}" for line in signals)
+
+    plain_lines = [re.sub(r"\s+", " ", l.strip()) for l in str(result or "").splitlines() if l.strip()]
+    if not plain_lines:
+        return "- Tidak ada output signifikan"
+    first = plain_lines[0]
+    first = first[:177] + "..." if len(first) > 180 else first
+    return f"- {first}"
+
+def _compact_suggestion_for_telegram(suggestion, raw_output):
+    normalized = _normalize_ai_status_in_text(suggestion, raw_output)
+    lines = [l.strip() for l in normalized.splitlines() if l.strip()]
+
+    status = ""
+    masalah = ""
+    saran = ""
+
+    for line in lines:
+        low = line.lower()
+        if low.startswith("status:") and not status:
+            status = line.split(":", 1)[1].strip()
+        elif low.startswith("masalah:") and not masalah:
+            masalah = line.split(":", 1)[1].strip()
+        elif low.startswith("saran:") and not saran:
+            saran = line.split(":", 1)[1].strip()
+
+    status = _normalize_status_level(status, _infer_risk_level(raw_output))
+    if not masalah:
+        signal = _extract_signal_lines(raw_output, limit=1)
+        masalah = signal[0] if signal else "Perlu review manual singkat"
+    if not saran:
+        saran = "Lakukan validasi konfigurasi dan perbaiki temuan utama di atas"
+
+    if len(masalah) > 180:
+        masalah = masalah[:177] + "..."
+    if len(saran) > 180:
+        saran = saran[:177] + "..."
+
+    return f"Status: {status}\nMasalah: {masalah}\nSaran: {saran}"
 
 def _split_text_chunks(text, max_len=2500):
     content = str(text or "").strip()
@@ -259,23 +342,19 @@ def send_to_telegram(test_name, result, suggestion):
         return
     
     try:
-        result_chunks = _split_text_chunks(result, max_len=2500)
-        suggestion_chunks = _split_text_chunks(suggestion, max_len=2500)
+        concise_result = _summarize_result_for_telegram(result)
+        concise_suggestion = _compact_suggestion_for_telegram(suggestion, result)
 
-        total_parts = len(result_chunks) + len(suggestion_chunks)
-        part_no = 1
+        message = f"""*Pemeriksaan:* {escape_markdown_v2(test_name)}
 
-        for section_name, chunks in (("Hasil Test", result_chunks), ("Saran", suggestion_chunks)):
-            for idx, chunk in enumerate(chunks, start=1):
-                title = section_name if len(chunks) == 1 else f"{section_name} (bagian {idx}/{len(chunks)})"
-                part_line = "" if total_parts == 1 else f"\\n\\n*Part:* {part_no}/{total_parts}"
-                message = f"""*Pemeriksaan:* {escape_markdown_v2(test_name)}{part_line}
+*Ringkasan Temuan:*
+{escape_markdown_v2(concise_result)}
 
-*{escape_markdown_v2(title)}:*
-{escape_markdown_v2(chunk)}
+*Saran:*
+{escape_markdown_v2(concise_suggestion)}
 """
-                _post_telegram_markdown(message)
-                part_no += 1
+
+        _post_telegram_markdown(message)
 
         print_info(f"Hasil dan saran test '{test_name}' dikirim ke Telegram.")
     except KeyboardInterrupt:
@@ -307,15 +386,18 @@ def create_fallback_analysis(test_name, raw_output, reason):
     status_level = _infer_risk_level(raw_output)
     
     # Basic security assessment
-    if any(keyword in output_lower for keyword in ['error', 'failed', 'denied', 'refused']):
+    signal = _extract_signal_lines(raw_output, limit=1)
+    specific_issue = signal[0] if signal else "Perlu review output"
+
+    if any(keyword in output_lower for keyword in ['error', 'failed', 'denied', 'refused', 'timeout', 'not found']):
         status_level = _max_risk_level(status_level, "MEDIUM")
-        return f"Status: {status_level}\nMasalah: Ditemukan error dalam output\nSaran: Review manual diperlukan"
-    elif any(keyword in output_lower for keyword in ['root', 'admin', 'sudo', 'privilege']):
+        return f"Status: {status_level}\nMasalah: {specific_issue}\nSaran: Review output dan perbaiki error yang terdeteksi"
+    elif any(keyword in output_lower for keyword in ['password kosong', 'uid 0', 'world-writable', 'permitrootlogin yes']):
         status_level = _max_risk_level(status_level, "HIGH")
-        return f"Status: {status_level}\nMasalah: Akses privileged terdeteksi\nSaran: Verifikasi keamanan akses"
+        return f"Status: {status_level}\nMasalah: {specific_issue}\nSaran: Prioritaskan perbaikan konfigurasi keamanan berisiko tinggi"
     elif any(keyword in output_lower for keyword in ['open', 'listening', 'accept']):
         status_level = _max_risk_level(status_level, "MEDIUM")
-        return f"Status: {status_level}\nMasalah: Port/layanan terbuka terdeteksi\nSaran: Pastikan hanya layanan perlu yang aktif"
+        return f"Status: {status_level}\nMasalah: {specific_issue}\nSaran: Pastikan hanya layanan/port yang diperlukan tetap terbuka"
     else:
         status_level = _normalize_status_level(status_level, "LOW")
         return f"Status: {status_level}\nMasalah: Tidak ada indikasi masalah langsung\nSaran: Lanjutkan monitoring rutin"
@@ -323,21 +405,27 @@ def create_fallback_analysis(test_name, raw_output, reason):
 def create_enhanced_fallback(test_name, raw_output, partial_ai_response):
     """Create enhanced fallback when AI gives incomplete response"""
     output_lower = raw_output.lower()
+    signal = _extract_signal_lines(raw_output, limit=1)
+    specific_issue = signal[0] if signal else "Perlu review output"
     
     # Extract any useful info from partial AI response
     status = _normalize_status_level(partial_ai_response, _infer_risk_level(raw_output))
     
     # Rule-based assessment
-    if any(keyword in output_lower for keyword in ['inactive', 'not found', 'failed', 'error']):
+    if any(keyword in output_lower for keyword in ['inactive', 'not found', 'failed', 'error', 'timeout', 'refused']):
         status = _max_risk_level(status, "MEDIUM")
-        masalah = "Service tidak aktif atau command tidak ditemukan"
+        masalah = specific_issue
         saran = "Periksa instalasi dan konfigurasi layanan keamanan"
-    elif any(keyword in output_lower for keyword in ['fail2ban', 'ssh', 'hardening']):
+    elif any(keyword in output_lower for keyword in ['password kosong', 'uid 0', 'world-writable', 'permitrootlogin yes']):
+        status = _max_risk_level(status, "HIGH")
+        masalah = specific_issue
+        saran = "Prioritaskan perbaikan konfigurasi keamanan berisiko tinggi"
+    elif any(keyword in output_lower for keyword in ['fail2ban', 'ssh', 'hardening', 'open', 'listening']):
         status = _max_risk_level(status, "MEDIUM")
-        masalah = "Konfigurasi keamanan perlu review"
+        masalah = specific_issue
         saran = "Pastikan hardening tools terpasang dan dikonfigurasi dengan benar"
     else:
-        masalah = "Perlu analisis manual lebih lanjut"
+        masalah = specific_issue
         saran = "Review output untuk identifikasi masalah keamanan"
     
     return f"""Status: {status}
