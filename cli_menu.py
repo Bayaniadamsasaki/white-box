@@ -116,30 +116,30 @@ def execute_choice(choice):
         sub_choice = input("Pilihan [a/b/c]: ").strip().lower()
         
         if sub_choice == "a":
-            os.system("python ssh_checker.py && python user_group_checker.py")
+            os.system("python -m checkers.ssh_checker && python -m checkers.user_group_checker")
         elif sub_choice == "b":
-            os.system("python network_config_checker.py && python port_scanner.py")
+            os.system("python -m checkers.network_config_checker && python port_scanner.py")
         elif sub_choice == "c":
-            os.system("python system_info_checker.py && python hardening_checker.py")
+            os.system("python -m checkers.system_info_checker && python -m checkers.hardening_checker")
         else:
             print_warning("Invalid choice, running basic system check...")
-            os.system("python system_info_checker.py")
+            os.system("python -m checkers.system_info_checker")
             
     elif choice == "3":
         print_info("🔐 Starting SSH Security Analysis...")
-        os.system("python ssh_checker.py")
+        os.system("python -m checkers.ssh_checker")
         
     elif choice == "4":
         print_info("👥 Starting User & Permission Audit...")
-        os.system("python user_group_checker.py")
+        os.system("python -m checkers.user_group_checker")
         
     elif choice == "5":
         print_info("🌐 Starting Network Security Scan...")
-        os.system("python network_config_checker.py && python port_scanner.py")
+        os.system("python -m checkers.network_config_checker && python port_scanner.py")
         
     elif choice == "6":
         print_info("🛡️ Starting System Hardening Check...")
-        os.system("python hardening_checker.py")
+        os.system("python -m checkers.hardening_checker")
         
     elif choice == "7":
         print_info("🚨 Starting Real-time Attack Monitor...")
@@ -199,9 +199,9 @@ def execute_choice(choice):
     elif choice == "14":
         print_info("📋 Opening Commands Guide...")
         if os.name == 'nt':  # Windows
-            os.system("type COMMANDS_GUIDE.md | more")
+            os.system("type docs\\COMMANDS_GUIDE.md | more")
         else:  # Linux/Mac
-            os.system("less COMMANDS_GUIDE.md")
+            os.system("less docs/COMMANDS_GUIDE.md")
             
     elif choice == "0":
         print_success("👋 Terima kasih telah menggunakan NULL Security System!")

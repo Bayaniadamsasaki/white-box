@@ -86,24 +86,24 @@ def main():
                 sub = input("Choose [a/b/c] or Enter for all: ").strip().lower()
                 
                 if sub == "a":
-                    os.system("python ssh_checker.py && python user_group_checker.py")
+                    os.system("python -m checkers.ssh_checker && python -m checkers.user_group_checker")
                 elif sub == "b":
-                    os.system("python network_config_checker.py && python port_scanner.py")
+                    os.system("python -m checkers.network_config_checker && python port_scanner.py")
                 elif sub == "c":
-                    os.system("python system_info_checker.py && python hardening_checker.py")
+                    os.system("python -m checkers.system_info_checker && python -m checkers.hardening_checker")
                 else:
-                    os.system("python ssh_checker.py && python user_group_checker.py && python system_info_checker.py")
+                    os.system("python -m checkers.ssh_checker && python -m checkers.user_group_checker && python -m checkers.system_info_checker")
                 wait_for_return()
                     
             elif choice == "3":
                 print(f"{Colors.OKGREEN}🔧 Individual Module Selection...{Colors.ENDC}")
                 modules = [
-                    ("ssh_checker.py", "SSH Security"),
-                    ("user_group_checker.py", "User & Groups"),
-                    ("hardening_checker.py", "System Hardening"),
-                    ("web_checker.py", "Web Services"),
-                    ("port_scanner.py", "Port Scanning"),
-                    ("network_config_checker.py", "Network Config")
+                    ("python -m checkers.ssh_checker", "SSH Security"),
+                    ("python -m checkers.user_group_checker", "User & Groups"),
+                    ("python -m checkers.hardening_checker", "System Hardening"),
+                    ("python -m checkers.web_checker", "Web Services"),
+                    ("python port_scanner.py", "Port Scanning"),
+                    ("python -m checkers.network_config_checker", "Network Config")
                 ]
                 
                 print("Available modules:")
@@ -114,9 +114,9 @@ def main():
                 try:
                     idx = int(mod_choice) - 1
                     if 0 <= idx < len(modules):
-                        script, desc = modules[idx]
+                        command, desc = modules[idx]
                         print(f"Running {desc}...")
-                        os.system(f"python {script}")
+                        os.system(command)
                         wait_for_return()
                     else:
                         print("Invalid module choice")
@@ -167,9 +167,9 @@ def main():
             elif choice == "9":
                 print(f"{Colors.OKBLUE}📋 Opening Commands Guide...{Colors.ENDC}")
                 if os.name == 'nt':
-                    os.system("type COMMANDS_GUIDE.md | more")
+                    os.system("type docs\\COMMANDS_GUIDE.md | more")
                 else:
-                    os.system("less COMMANDS_GUIDE.md")
+                    os.system("less docs/COMMANDS_GUIDE.md")
                 wait_for_return()
                     
             else:

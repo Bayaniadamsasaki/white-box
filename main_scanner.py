@@ -4,39 +4,39 @@ import os # Untuk os.geteuid() agar lebih konsisten dengan root_checks.is_root()
 import utils # Baru ditambahkan
 import host_utils
 import port_scanner
-import ftp_checker
-import ssh_checker
-import web_checker
-
-# Modul checker yang telah direfaktor/baru
 import root_checks
-import system_info_checker
-import hardening_checker
 import log_analyzer
-import user_group_checker
-import network_config_checker
-import package_manager_checker
-import cron_checker
-import resource_limit_checker
-import security_module_checker
-import environment_checker
-import ntp_checker
-import inode_checker
-import auditd_checker
-import password_policy_checker
-import integrity_checker # Menggantikan integrity_checker_stub
-import shared_memory_checker
-import kernel_module_checker
-import motd_checker
-import tmp_mount_checker
-import usb_devices_checker
-import core_dump_checker
-import sticky_bit_checker
-import compilers_presence_checker
-import login_banner_checker
-import securetty_checker
-import tcp_wrappers_checker
 import security_monitor
+from checkers import (
+    auditd_checker,
+    compilers_presence_checker,
+    core_dump_checker,
+    cron_checker,
+    environment_checker,
+    ftp_checker,
+    hardening_checker,
+    inode_checker,
+    integrity_checker,
+    kernel_module_checker,
+    login_banner_checker,
+    motd_checker,
+    network_config_checker,
+    ntp_checker,
+    package_manager_checker,
+    password_policy_checker,
+    resource_limit_checker,
+    securetty_checker,
+    security_module_checker,
+    shared_memory_checker,
+    ssh_checker,
+    sticky_bit_checker,
+    system_info_checker,
+    tcp_wrappers_checker,
+    tmp_mount_checker,
+    usb_devices_checker,
+    user_group_checker,
+    web_checker,
+)
 
 def is_root():
     return os.geteuid() == 0

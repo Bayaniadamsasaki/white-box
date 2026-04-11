@@ -1,4 +1,4 @@
-# 🚀 NULL Security System - Panduan Perintah
+﻿# 🚀 NULL Security System - Panduan Perintah
 
 ## 📋 **PERINTAH UTAMA**
 
@@ -8,10 +8,10 @@
 python main_scanner.py
 
 # Jalankan checker individual 
-python ssh_checker.py           # Cek konfigurasi SSH
-python user_group_checker.py    # Cek user & group security
-python hardening_checker.py     # Cek system hardening
-python web_checker.py           # Cek web services security
+python -m checkers.ssh_checker           # Cek konfigurasi SSH
+python -m checkers.user_group_checker    # Cek user & group security
+python -m checkers.hardening_checker     # Cek system hardening
+python -m checkers.web_checker           # Cek web services security
 python port_scanner.py          # Scan port yang terbuka
 ```
 
@@ -78,10 +78,10 @@ ollama pull llama3.2:1b
 ### **Scenario 1: Quick Security Check**
 ```bash
 # Cek SSH security saja
-python ssh_checker.py
+python -m checkers.ssh_checker
 
 # Cek user permissions
-python user_group_checker.py
+python -m checkers.user_group_checker
 
 # Cek port terbuka
 python port_scanner.py
@@ -213,13 +213,13 @@ echo "$(date) - Subfinder scanning started" >> test_security.log
 ### **System Health Check**
 ```bash
 # Quick system overview
-python system_info_checker.py
+python -m checkers.system_info_checker
 
 # Network configuration check
-python network_config_checker.py
+python -m checkers.network_config_checker
 
 # Environment security check
-python environment_checker.py
+python -m checkers.environment_checker
 ```
 
 ### **Generate Reports**
@@ -228,8 +228,8 @@ python environment_checker.py
 python main_scanner.py > security_report_$(date +%Y%m%d).txt
 
 # Individual module reports
-python ssh_checker.py > ssh_report.txt
-python hardening_checker.py > hardening_report.txt
+python -m checkers.ssh_checker > ssh_report.txt
+python -m checkers.hardening_checker > hardening_report.txt
 ```
 
 ### **Maintenance Commands**
@@ -262,7 +262,7 @@ ollama serve
 ollama pull llama3.2:1b
 
 # 4. Test system
-python ssh_checker.py
+python -m checkers.ssh_checker
 
 # 5. Start full monitoring
 python start_monitoring.py --continuous
@@ -279,4 +279,6 @@ python start_monitoring.py --continuous
 **🔗 Need Help?**
 - Cek `README.md` untuk panduan lengkap
 - Cek `MONITORING_GUIDE.md` untuk advanced monitoring
-- Cek `Dokumentasi Projek.md` untuk technical details
+- Cek `docs/Dokumentasi Projek.md` untuk technical details
+
+

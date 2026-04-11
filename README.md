@@ -1,4 +1,4 @@
-# NULL Security System
+﻿# NULL Security System
 # Integrated Cybersecurity Scanner with Real-time Monitoring & AI Analysis
 
 **Sistem keamanan siber terintegrasi untuk deteksi ancaman real-time dengan analisis AI otomatis.**
@@ -100,10 +100,10 @@ python start_monitoring.py --continuous  # 24/7 monitoring mode
 
 ### **⚡ Individual Security Checks**
 ```bash
-python ssh_checker.py               # SSH configuration security
-python user_group_checker.py        # User & permissions analysis  
-python hardening_checker.py         # System hardening status
-python web_checker.py               # Web services security
+python -m checkers.ssh_checker               # SSH configuration security
+python -m checkers.user_group_checker        # User & permissions analysis  
+python -m checkers.hardening_checker         # System hardening status
+python -m checkers.web_checker               # Web services security
 python port_scanner.py              # Open ports scanning
 ```
 
@@ -122,7 +122,7 @@ ollama pull llama3.2:1b            # Download AI model (1.3GB - fast!)
 copy env.example .env               # Setup configuration
 ```
 
-📖 **Detailed Commands:** See [COMMANDS_GUIDE.md](COMMANDS_GUIDE.md) for complete command reference
+📖 **Detailed Commands:** See [COMMANDS_GUIDE.md](docs/COMMANDS_GUIDE.md) for complete command reference
 
 ## 📋 **Cara Penggunaan**
 
@@ -210,7 +210,7 @@ null/
 
 ## 🎓 **Untuk Proposal Skripsi**
 
-**Lihat file:** `Dokumentasi Projek.md` untuk dokumentasi lengkap meliputi:
+**Lihat file:** `docs/Dokumentasi Projek.md` untuk dokumentasi lengkap meliputi:
 - 📋 Deskripsi proyek komprehensif
 - 🏗️ Arsitektur sistem  
 - 🔬 Metodologi penelitian
@@ -249,3 +249,5 @@ python3 attack_simulator.py  # Test attack detection
 - Python 3.7+
 - Linux/Windows
 - Root access (optional, untuk hasil optimal)
+
+
