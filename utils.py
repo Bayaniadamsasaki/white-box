@@ -259,6 +259,22 @@ def create_enhanced_fallback(test_name, raw_output, partial_ai_response):
 Masalah: {masalah}
 Saran: {saran}"""
 
+def _env_true(name):
+    return os.getenv(name, "false").strip().lower() == "true"
+
+def _is_high_system_load(fast_mode=False):
+    """Return True when 1-minute load average is too high for AI inference."""
+    if not hasattr(os, "getloadavg"):
+        return False
+    try:
+        load1, _, _ = os.getloadavg()
+        cpu_count = os.cpu_count() or 1
+        default_threshold = 1.5 if fast_mode else (2.5 if cpu_count <= 4 else 4.0)
+        max_load = float(os.getenv("AI_MAX_LOAD", str(default_threshold)))
+        return load1 >= max_load
+    except Exception:
+        return False
+
 def get_ollama_suggestion(test_name, raw_output):
     """Get security analysis from local Ollama model with comprehensive anti-truncation measures"""
     if not raw_output or not raw_output.strip():
@@ -269,6 +285,17 @@ def get_ollama_suggestion(test_name, raw_output):
     if disable_ai:
         print_info("🔧 AI analysis disabled - using fallback analysis only")
         return create_fallback_analysis(test_name, raw_output, "AI disabled for server performance")
+
+    ubuntu_mode = _env_true("UBUNTU_MODE")
+    fast_mode = _env_true("FAST_MODE")
+
+    if fast_mode:
+        print_warning("⚡ FAST_MODE aktif: AI dilewati untuk menjaga stabilitas server.")
+        return create_fallback_analysis(test_name, raw_output, "FAST_MODE enabled")
+
+    if ubuntu_mode and _is_high_system_load(fast_mode=False):
+        print_warning("⚠️ Beban sistem tinggi (UBUNTU_MODE), AI dilewati sementara.")
+        return create_fallback_analysis(test_name, raw_output, "High system load in UBUNTU_MODE")
 
     if not OLLAMA_MODEL:
         print_warning("⚠️ OLLAMA_MODEL belum di-set di .env. Menggunakan fallback analysis.")
@@ -304,12 +331,27 @@ Saran: [solusi perbaikan]"""
         
         print_info("✅ Ollama OK. Model diambil dari OLLAMA_MODEL (.env).")
         
-        # Baca pengaturan AI dari .env dengan nilai tinggi untuk anti-truncation
-        ai_num_predict = int(os.getenv("AI_NUM_PREDICT", "500"))
+        # Baca pengaturan AI dari .env
+        base_num_predict = int(os.getenv("AI_NUM_PREDICT", "500"))
         ai_temperature = float(os.getenv("AI_TEMPERATURE", "0.1"))
-        ai_timeout = int(os.getenv("AI_TIMEOUT", "240"))
-        max_retries = int(os.getenv("AI_RETRY_ATTEMPTS", "5"))
-        min_length = int(os.getenv("AI_MIN_RESPONSE_LENGTH", "200"))
+        base_timeout = int(os.getenv("AI_TIMEOUT", "240"))
+        base_retries = int(os.getenv("AI_RETRY_ATTEMPTS", "5"))
+        base_min_length = int(os.getenv("AI_MIN_RESPONSE_LENGTH", "200"))
+
+        # Profile konservatif untuk Ubuntu/VPS
+        if ubuntu_mode:
+            ai_num_predict = min(base_num_predict, 250)
+            ai_timeout = min(base_timeout, 90)
+            max_retries = min(base_retries, 2)
+            min_length = min(base_min_length, 120)
+            num_ctx = 768
+            print_info("🐧 UBUNTU_MODE aktif: memakai profile AI konservatif.")
+        else:
+            ai_num_predict = base_num_predict
+            ai_timeout = base_timeout
+            max_retries = base_retries
+            min_length = base_min_length
+            num_ctx = 1024
         
         print_info(f"⏳ Memproses... (AI_NUM_PREDICT={ai_num_predict}, timeout={ai_timeout}s, {max_retries} percobaan)")
         
@@ -318,8 +360,12 @@ Saran: [solusi perbaikan]"""
         for attempt in range(max_retries):
             try:
                 # Prepare request dengan parameter yang disesuaikan per attempt
-                current_num_predict = ai_num_predict + (attempt * 150)  # Tambah 150 per attempt
-                current_timeout = ai_timeout + (attempt * 30)  # Tambah 30s per attempt
+                if ubuntu_mode:
+                    current_num_predict = ai_num_predict + (attempt * 50)
+                    current_timeout = ai_timeout + (attempt * 15)
+                else:
+                    current_num_predict = ai_num_predict + (attempt * 150)
+                    current_timeout = ai_timeout + (attempt * 30)
                 
                 data = {
                     "model": OLLAMA_MODEL,
@@ -328,7 +374,7 @@ Saran: [solusi perbaikan]"""
                     "options": {
                         "temperature": ai_temperature,
                         "num_predict": current_num_predict,
-                        "num_ctx": 1024,
+                        "num_ctx": num_ctx,
                         "top_k": 10,
                         "top_p": 0.9
                         # Hapus stop tokens yang terlalu agresif
