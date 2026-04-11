@@ -57,6 +57,7 @@ def wait_for_return():
     input(f"\n{Colors.OKGREEN}📤 Scan completed! Press Enter to return to main menu...{Colors.ENDC}")
 
 def main():
+    """Legacy quick launcher menu (kept for --quick mode)."""
     """Main launcher function with menu loop"""
     while True:
         try:
@@ -152,8 +153,13 @@ def main():
                     
             elif choice == "7":
                 print(f"{Colors.OKBLUE}🎮 Launching Interactive Menu...{Colors.ENDC}")
-                os.system("python cli_menu.py")
-                wait_for_return()
+                try:
+                    from cli_menu import main as interactive_main
+                    interactive_main()
+                    break
+                except Exception as e:
+                    print(f"{Colors.FAIL}❌ Gagal membuka Interactive Menu: {e}{Colors.ENDC}")
+                    wait_for_return()
                 
             elif choice == "8":
                 print(f"{Colors.OKBLUE}⚙️ Opening Configuration Setup...{Colors.ENDC}")
@@ -184,4 +190,15 @@ def main():
             wait_for_return()
 
 if __name__ == "__main__":
-    main()
+    # Default launcher langsung ke Interactive Menu agar tidak double CLI.
+    # Gunakan `python launcher.py --quick` jika ingin menu launcher lama.
+    if "--quick" in sys.argv:
+        main()
+    else:
+        try:
+            from cli_menu import main as interactive_main
+            interactive_main()
+        except Exception as e:
+            print(f"{Colors.FAIL}❌ Gagal menjalankan Interactive Menu: {e}{Colors.ENDC}")
+            print(f"{Colors.WARNING}⚠️ Menjalankan launcher mode lama sebagai fallback...{Colors.ENDC}")
+            main()

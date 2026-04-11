@@ -231,7 +231,7 @@ def _normalize_ai_status_in_text(suggestion_text, raw_output):
 
     return "\n".join(lines).strip()
 
-def _extract_signal_lines(text, limit=3):
+def _extract_signal_lines(text, limit=3, clip_len=240):
     lines = [re.sub(r"\s+", " ", l.strip()) for l in str(text or "").splitlines() if l.strip()]
     if not lines:
         return []
@@ -252,7 +252,7 @@ def _extract_signal_lines(text, limit=3):
             score = 2
 
         if score > 0:
-            clipped = line[:177] + "..." if len(line) > 180 else line
+            clipped = line[:clip_len - 3] + "..." if len(line) > clip_len else line
             scored.append((score, idx, clipped))
 
     scored.sort(key=lambda x: (-x[0], x[1]))
@@ -270,34 +270,59 @@ def _extract_signal_lines(text, limit=3):
 
     return picked
 
-def _summarize_result_for_telegram(result):
-    signals = _extract_signal_lines(result, limit=3)
-    if signals:
-        return "\n".join(f"- {line}" for line in signals)
-
+def _summarize_result_for_telegram(result, max_lines=8, line_clip=280):
     plain_lines = [re.sub(r"\s+", " ", l.strip()) for l in str(result or "").splitlines() if l.strip()]
     if not plain_lines:
         return "- Tidak ada output signifikan"
-    first = plain_lines[0]
-    first = first[:177] + "..." if len(first) > 180 else first
-    return f"- {first}"
+
+    signals = _extract_signal_lines(result, limit=max_lines, clip_len=line_clip)
+
+    selected = []
+    seen = set()
+
+    for line in signals:
+        key = line.lower()
+        if key not in seen:
+            selected.append(line)
+            seen.add(key)
+
+    for line in plain_lines:
+        if len(selected) >= max_lines:
+            break
+        clipped = line[:line_clip - 3] + "..." if len(line) > line_clip else line
+        key = clipped.lower()
+        if key in seen:
+            continue
+        selected.append(clipped)
+        seen.add(key)
+
+    if not selected:
+        first = plain_lines[0]
+        first = first[:line_clip - 3] + "..." if len(first) > line_clip else first
+        selected = [first]
+
+    return "\n".join(f"- {line}" for line in selected[:max_lines])
+
+def _clip_text(text, max_chars):
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars - 3].rstrip() + "..."
+
+def _extract_named_field(lines, field_name):
+    prefix = field_name.lower() + ":"
+    for line in lines:
+        low = line.lower()
+        if low.startswith(prefix):
+            return line.split(":", 1)[1].strip()
+    return ""
 
 def _compact_suggestion_for_telegram(suggestion, raw_output):
     normalized = _normalize_ai_status_in_text(suggestion, raw_output)
     lines = [l.strip() for l in normalized.splitlines() if l.strip()]
 
-    status = ""
-    masalah = ""
-    saran = ""
-
-    for line in lines:
-        low = line.lower()
-        if low.startswith("status:") and not status:
-            status = line.split(":", 1)[1].strip()
-        elif low.startswith("masalah:") and not masalah:
-            masalah = line.split(":", 1)[1].strip()
-        elif low.startswith("saran:") and not saran:
-            saran = line.split(":", 1)[1].strip()
+    status = _extract_named_field(lines, "Status")
+    masalah = _extract_named_field(lines, "Masalah")
+    saran = _extract_named_field(lines, "Saran")
 
     status = _normalize_status_level(status, _infer_risk_level(raw_output))
     if not masalah:
@@ -306,12 +331,25 @@ def _compact_suggestion_for_telegram(suggestion, raw_output):
     if not saran:
         saran = "Lakukan validasi konfigurasi dan perbaiki temuan utama di atas"
 
-    if len(masalah) > 180:
-        masalah = masalah[:177] + "..."
-    if len(saran) > 180:
-        saran = saran[:177] + "..."
+    # Ambil konteks tambahan AI jika ada baris non-judul lain
+    extra_lines = []
+    for line in lines:
+        low = line.lower()
+        if low.startswith("status:") or low.startswith("masalah:") or low.startswith("saran:"):
+            continue
+        extra_lines.append(line)
+        if len(extra_lines) >= 2:
+            break
 
-    return f"Status: {status}\nMasalah: {masalah}\nSaran: {saran}"
+    masalah = _clip_text(re.sub(r"\s+", " ", masalah), 420)
+    saran = _clip_text(re.sub(r"\s+", " ", saran), 560)
+
+    formatted = f"Status: {status}\nMasalah: {masalah}\nSaran: {saran}"
+    if extra_lines:
+        tambahan = " ".join(extra_lines)
+        tambahan = _clip_text(re.sub(r"\s+", " ", tambahan), 380)
+        formatted += f"\nCatatan: {tambahan}"
+    return formatted
 
 def _split_text_chunks(text, max_len=2500):
     content = str(text or "").strip()
@@ -342,17 +380,34 @@ def send_to_telegram(test_name, result, suggestion):
         return
     
     try:
-        concise_result = _summarize_result_for_telegram(result)
+        concise_result = _summarize_result_for_telegram(result, max_lines=8, line_clip=280)
         concise_suggestion = _compact_suggestion_for_telegram(suggestion, result)
+
+        concise_result = _clip_text(concise_result, 2200)
+        concise_suggestion = _clip_text(concise_suggestion, 1400)
 
         message = f"""*Pemeriksaan:* {escape_markdown_v2(test_name)}
 
-*Ringkasan Temuan:*
+    *Hasil Test:*
 {escape_markdown_v2(concise_result)}
 
-*Saran:*
+    *Analisis AI:*
 {escape_markdown_v2(concise_suggestion)}
 """
+
+        # Telegram hard limit ~4096 chars. Trim hasil test dulu jika masih terlalu panjang.
+        escaped_message = message
+        if len(escaped_message) > 3900:
+            allowed_result = max(700, 2200 - (len(escaped_message) - 3900))
+            concise_result = _clip_text(concise_result, allowed_result)
+            message = f"""*Pemeriksaan:* {escape_markdown_v2(test_name)}
+
+    *Hasil Test:*
+    {escape_markdown_v2(concise_result)}
+
+    *Analisis AI:*
+    {escape_markdown_v2(concise_suggestion)}
+    """
 
         _post_telegram_markdown(message)
 
