@@ -431,13 +431,6 @@ def _build_recommendation_steps(raw_output, max_steps=3):
     if "not found" in low or "timeout" in low or "refused" in low or "failed" in low:
         steps.append("Verifikasi paket terpasang, status service, dan dependensi command sebelum rerun scanning.")
 
-    if not steps:
-        steps = [
-            "Validasi ulang konfigurasi layanan terkait temuan utama dan pastikan baseline hardening diterapkan.",
-            "Lakukan retest setelah perbaikan untuk memastikan status risiko menurun.",
-            "Tambahkan monitoring berkala agar regresi konfigurasi cepat terdeteksi."
-        ]
-
     unique_steps = []
     seen = set()
     for step in steps:
@@ -471,10 +464,14 @@ def _compact_suggestion_for_telegram(suggestion, raw_output):
     saran = _clip_text(re.sub(r"\s+", " ", saran), 900)
     catatan = _clip_text(re.sub(r"\s+", " ", catatan), 500) if catatan else ""
 
+    show_priority_steps = os.getenv("SHOW_PRIORITY_STEPS", "true").strip().lower() == "true"
     langkah = _build_recommendation_steps(raw_output, max_steps=3)
-    langkah_text = "\n".join(f"{idx}. {step}" for idx, step in enumerate(langkah, 1))
+    show_steps = show_priority_steps and langkah and _severity_rank(status) >= _severity_rank("MEDIUM")
 
-    formatted = f"Status: {status}\nMasalah: {masalah}\nSaran: {saran}\nLangkah Prioritas:\n{langkah_text}"
+    formatted = f"Status: {status}\nMasalah: {masalah}\nSaran: {saran}"
+    if show_steps:
+        langkah_text = "\n".join(f"{idx}. {step}" for idx, step in enumerate(langkah, 1))
+        formatted += f"\nLangkah Prioritas:\n{langkah_text}"
     if catatan:
         formatted += f"\nCatatan: {catatan}"
     return formatted
