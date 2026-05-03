@@ -75,7 +75,7 @@ Type=simple
 User=root
 WorkingDirectory=$PROJECT_DIR
 Environment=PATH=$PROJECT_DIR/env/bin
-ExecStart=$PROJECT_DIR/env/bin/python security_monitor.py
+ExecStart=$PROJECT_DIR/env/bin/python start_monitoring.py --continuous
 Restart=always
 RestartSec=10
 
@@ -111,7 +111,7 @@ echo "   cd $PROJECT_DIR && nano .env"
 echo
 echo "3. Test the system:"
 echo "   cd $PROJECT_DIR && source env/bin/activate"
-echo "   python host_utils.py"
+echo "   python -m core.host_utils"
 echo
 echo "4. Run full security scan (MAIN COMMAND):"
 echo "   sudo $PROJECT_DIR/env/bin/python main_scanner.py"
@@ -121,7 +121,7 @@ echo "   sudo systemctl enable security-monitor"
 echo "   sudo systemctl start security-monitor"
 echo
 echo "📊 TESTING:"
-echo "- Host utilities test: python host_utils.py"
+echo "- Host utilities test: python -m core.host_utils"
 echo "- Full system scan: python main_scanner.py"
 echo "- Real-time monitoring: python start_monitoring.py --continuous"
 echo

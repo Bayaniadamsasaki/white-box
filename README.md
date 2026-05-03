@@ -104,7 +104,7 @@ python -m checkers.ssh_checker               # SSH configuration security
 python -m checkers.user_group_checker        # User & permissions analysis  
 python -m checkers.hardening_checker         # System hardening status
 python -m checkers.web_checker               # Web services security
-python port_scanner.py              # Open ports scanning
+python -m core.port_scanner         # Open ports scanning
 ```
 
 ### **🚨 Monitoring Modes**
@@ -185,27 +185,28 @@ Details: GET /api/users HTTP/1.1 User-Agent: subfinder/2.6.3
 
 ```
 null/
-├── 📂 Core Scanner (White-box Security)
-│   ├── main_scanner.py              # Main orchestrator
-│   ├── system_info_checker.py       # System analysis
-│   ├── network_config_checker.py    # Network security
-│   ├── ssh_checker.py              # SSH analysis
-│   └── [25+ security modules]       # Specialized checks
-│
-├── 📂 Real-time Monitoring  
-│   ├── security_monitor.py          # Monitoring engine
-│   ├── start_monitoring.py          # Easy launcher
-│   └── attack_simulator.py          # Testing tools
-│
-├── 📂 AI & Communications
-│   │   ├── utils.py                     # AI + Telegram utilities
-├── README.md                        # Project documentation
-│   └── security_config.py          # Configuration
-│
-└── 📂 Documentation
-    ├── README.md                    # This file
-    ├── Dokumentasi Projek.md        # Complete project docs
-    └── MONITORING_GUIDE.md         # Monitoring guide
+├── core/                     # Core scanner utilities
+│   ├── host_utils.py
+│   ├── port_scanner.py
+│   └── root_checks.py
+├── analysis/
+│   └── log_analyzer.py
+├── monitoring/
+│   └── security_monitor.py
+├── tools/
+│   └── emergency_ubuntu_fix.py
+├── checkers/                 # 25+ security modules
+├── backup/
+├── scripts/
+├── docs/
+├── main_scanner.py
+├── start_monitoring.py
+├── cli_menu.py
+├── launcher.py
+├── utils.py
+├── requirements.txt
+├── env.example
+└── .env
 ```
 
 ## 🎓 **Untuk Proposal Skripsi**

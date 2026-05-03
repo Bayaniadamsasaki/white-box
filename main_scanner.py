@@ -2,11 +2,9 @@ import os # Untuk os.geteuid() agar lebih konsisten dengan root_checks.is_root()
 
 # Modul utilitas dan checker dasar
 import utils # Baru ditambahkan
-import host_utils
-import port_scanner
-import root_checks
-import log_analyzer
-import security_monitor
+from core import host_utils, port_scanner, root_checks
+from analysis import log_analyzer
+from monitoring import security_monitor
 from checkers import (
     auditd_checker,
     compilers_presence_checker,
@@ -81,9 +79,9 @@ def main():
     else:
         utils.print_warning("\nTidak dijalankan sebagai root. Beberapa pengujian akan dilewati atau memberikan hasil terbatas.")
         utils.print_warning("    Pengujian yang sangat bergantung pada root (atau memberikan detail lebih):")
-        utils.print_warning("    - Pengecekan Root Dasar (dari root_checks.py)")
+        utils.print_warning("    - Pengecekan Root Dasar (dari core/root_checks.py)")
         utils.print_warning("    - Pengecekan Hardening (hardening_checker.py)")
-        utils.print_warning("    - Analisis Log (log_analyzer.py)")
+        utils.print_warning("    - Analisis Log (analysis/log_analyzer.py)")
         utils.print_warning("    - Detail Modul Keamanan (security_module_checker.py)")
         utils.print_warning("    - Aturan & Status Auditd (auditd_checker.py)")
         utils.print_warning("    - Detail Core Dump (core_dump_checker.py)")
@@ -143,7 +141,7 @@ def main():
             monitor_manager.start_continuous_monitoring()
         else:
             utils.print_info("Monitoring tidak dimulai. Anda dapat menjalankannya nanti dengan:")
-            utils.print_info("python security_monitor.py --continuous")
+            utils.print_info("python start_monitoring.py --continuous")
     except KeyboardInterrupt:
         utils.print_info("\nExiting...")
 

@@ -103,7 +103,7 @@ Scan sekali untuk melihat serangan yang sedang berlangsung saat ini.
 python start_monitoring.py --scan
 
 # Atau langsung
-python security_monitor.py
+python -m monitoring.security_monitor
 ```
 
 ## Real-time Detection Examples
@@ -288,7 +288,8 @@ Ketika serangan terdeteksi, sistem akan:
 ```
 null/
 ├── start_monitoring.py      # Main entry point untuk monitoring
-├── security_monitor.py      # Core monitoring engine  
+├── monitoring/
+│   └── security_monitor.py  # Core monitoring engine  
 ├── main_scanner.py         # Integrated dengan monitoring option
 ├── utils.py               # Telegram & AI integration
 ├── .env                   # Configuration file

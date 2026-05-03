@@ -118,7 +118,7 @@ def execute_choice(choice):
         if sub_choice == "a":
             os.system("python -m checkers.ssh_checker && python -m checkers.user_group_checker")
         elif sub_choice == "b":
-            os.system("python -m checkers.network_config_checker && python port_scanner.py")
+            os.system("python -m checkers.network_config_checker && python -m core.port_scanner")
         elif sub_choice == "c":
             os.system("python -m checkers.system_info_checker && python -m checkers.hardening_checker")
         else:
@@ -135,7 +135,7 @@ def execute_choice(choice):
         
     elif choice == "5":
         print_info("🌐 Starting Network Security Scan...")
-        os.system("python -m checkers.network_config_checker && python port_scanner.py")
+        os.system("python -m checkers.network_config_checker && python -m core.port_scanner")
         
     elif choice == "6":
         print_info("🛡️ Starting System Hardening Check...")
@@ -165,7 +165,7 @@ def execute_choice(choice):
             
     elif choice == "10":
         print_info("📊 Starting Attack Pattern Analysis...")
-        os.system("python security_monitor.py")
+        os.system("python -m monitoring.security_monitor")
         
     elif choice == "11":
         print_info("⚙️ Opening Configuration Setup...")

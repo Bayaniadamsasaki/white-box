@@ -832,7 +832,7 @@ Security monitoring components: {'Ready' if (monitor_manager.log_paths or PSUTIL
         
         # Tawarkan untuk memulai monitoring
         print_info("\nSecurity monitoring test selesai.")
-        print_info("Untuk memulai real-time monitoring, jalankan: python security_monitor.py")
+        print_info("Untuk memulai real-time monitoring, jalankan: python start_monitoring.py --continuous")
         
     except Exception as e:
         error_msg = f"Error dalam security monitoring: {e}"

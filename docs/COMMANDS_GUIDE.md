@@ -12,7 +12,7 @@ python -m checkers.ssh_checker           # Cek konfigurasi SSH
 python -m checkers.user_group_checker    # Cek user & group security
 python -m checkers.hardening_checker     # Cek system hardening
 python -m checkers.web_checker           # Cek web services security
-python port_scanner.py          # Scan port yang terbuka
+python -m core.port_scanner     # Scan port yang terbuka
 ```
 
 ### 2. **🚨 Real-time Monitoring (Blackbox Detection)**
@@ -84,7 +84,7 @@ python -m checkers.ssh_checker
 python -m checkers.user_group_checker
 
 # Cek port terbuka
-python port_scanner.py
+python -m core.port_scanner
 ```
 
 ### **Scenario 2: Comprehensive Security Audit**
@@ -144,7 +144,7 @@ python start_monitoring.py --continuous --verbose
 
 # Check individual modules
 python utils.py  # Test utilities
-python security_monitor.py  # Test monitoring engine
+python -m monitoring.security_monitor  # Test monitoring engine
 ```
 
 ### **Performance Monitoring**
@@ -179,10 +179,10 @@ nohup python start_monitoring.py --continuous > monitor.log 2>&1 &
 ### **Monitor Specific Threats**
 ```bash
 # Monitor with focus on specific attack types
-python security_monitor.py  # Direct monitoring script
+python -m monitoring.security_monitor  # Direct monitoring script
 
 # Check what's being monitored
-python -c "from security_monitor import SecurityEvent; print('Monitoring ready')"
+python -c "from monitoring.security_monitor import SecurityEvent; print('Monitoring ready')"
 ```
 
 ---

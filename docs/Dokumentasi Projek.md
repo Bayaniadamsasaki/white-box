@@ -47,7 +47,7 @@ main_scanner.py → Orchestrator utama
 
 ### **2. Real-time Monitoring System**
 ```
-security_monitor.py → Real-time Detection Engine
+monitoring/security_monitor.py → Real-time Detection Engine
 ├── Log File Monitoring (Real-time)
 ├── Network Activity Monitoring
 ├── Process Monitoring
@@ -219,32 +219,96 @@ pathlib - File system operations
 ### **File Structure:**
 ```
 null/
-├── Core Scanner Modules
-│   ├── main_scanner.py              # Main orchestrator
-│   ├── system_info_checker.py       # System information
-│   ├── network_config_checker.py    # Network configuration
-│   ├── user_group_checker.py        # User management
-│   ├── security_module_checker.py   # Security modules
-│   └── [25+ security modules]       # Specialized checks
-│
-├── Monitoring System
-│   ├── security_monitor.py          # Real-time monitoring
-│   ├── start_monitoring.py          # Monitoring launcher
-│   └── attack_simulator.py          # Testing framework
-│
-├── AI & Communication
-│   ├── utils.py                     # AI & Telegram integration
-│   └── security_config.py          # Configuration management
-│
-├── Documentation
-│   ├── README.md                    # Project overview
-│   ├── MONITORING_GUIDE.md         # Monitoring documentation
-│   └── Dokumentasi Projek.md       # This file
-│
-└── Configuration
-    ├── requirements.txt             # Dependencies
-    ├── .env.example                # Configuration template
-    └── deploy_ubuntu.sh            # Deployment script
+├── core/                       # Core scanner utilities
+│   ├── host_utils.py
+│   ├── port_scanner.py
+│   └── root_checks.py
+├── analysis/
+│   └── log_analyzer.py
+├── monitoring/
+│   └── security_monitor.py
+├── tools/
+│   └── emergency_ubuntu_fix.py
+├── checkers/                   # 25+ security modules
+├── backup/
+├── scripts/
+├── docs/
+├── main_scanner.py
+├── start_monitoring.py
+├── cli_menu.py
+├── launcher.py
+├── utils.py
+├── requirements.txt
+├── env.example
+└── .env
+```
+
+### **Pengelompokan Berkas Utama**
+Untuk memudahkan navigasi, berkas di root dikelompokkan berdasarkan fungsi utamanya:
+
+- **Core scanner**: main_scanner.py, core/ (host_utils.py, port_scanner.py, root_checks.py)
+- **Monitoring**: start_monitoring.py, monitoring/security_monitor.py
+- **Analisis & laporan**: analysis/log_analyzer.py
+- **CLI & launcher**: cli_menu.py, launcher.py
+- **Utilities**: utils.py, tools/emergency_ubuntu_fix.py
+- **Konfigurasi**: requirements.txt, env.example, .env
+- **Dokumentasi**: README.md, docs/
+- **Modul pemeriksaan**: checkers/ (kumpulan modul pemeriksaan keamanan)
+- **Cadangan & utilitas tambahan**: backup/, scripts/
+
+---
+
+## **SPESIFIKASI TEKNOLOGI DETAIL**
+
+### **Runtime dan Environment**
+- Python 3.11+ sebagai runtime utama.
+- Konfigurasi memakai file `.env` dan dimuat dengan `python-dotenv`.
+- Pemeriksaan sistem dan servis dijalankan lewat `subprocess` agar bisa memanggil perintah OS.
+
+### **Dependencies Utama (requirements.txt)**
+
+| Package | Versi | Fungsi | Catatan |
+|---|---|---|---|
+| google-generativeai | 0.5.4 | Library AI alternatif | Belum dipakai di modul inti saat ini |
+| python-telegram-bot | 21.1.1 | SDK Telegram | Notifikasi utama memakai HTTP API via `requests` |
+| requests | 2.31.0 | HTTP client | Dipakai untuk Ollama dan Telegram API |
+| python-dotenv | 1.0.0 | Env loader | Memuat konfigurasi dari `.env` |
+| psutil | 5.9.5 | System monitoring | CPU, memori, proses, dan network snapshot |
+
+### **Integrasi AI (Ollama Local)**
+- Endpoint inference: `{OLLAMA_BASE_URL}/api/generate`.
+- Health check: `{OLLAMA_BASE_URL}/api/tags`.
+- Format respons AI dibakukan: `Status`, `Masalah`, `Saran`.
+- Fallback otomatis ke rule-based analysis jika AI dimatikan, server Ollama offline, atau model belum diset.
+
+### **Integrasi Telegram**
+- Mengirim notifikasi ke Telegram Bot HTTP API.
+- Format pesan memakai MarkdownV2 dan dilakukan escaping karakter khusus.
+- Pesan diringkas agar tetap di bawah batas 4096 karakter Telegram.
+
+### **Konfigurasi Utama (.env)**
+
+```bash
+# Telegram
+TELEGRAM_BOT_TOKEN=<isi_token>
+TELEGRAM_CHAT_ID=<chat_id>
+
+# Ollama
+OLLAMA_MODEL=<nama_model>
+OLLAMA_BASE_URL=http://localhost:11434
+
+# AI tuning
+AI_NUM_PREDICT=400
+AI_TEMPERATURE=0.2
+AI_TIMEOUT=180
+AI_RETRY_ATTEMPTS=2
+AI_MIN_RESPONSE_LENGTH=150
+
+# Mode operasional
+DISABLE_AI_ANALYSIS=false
+UBUNTU_MODE=true
+FAST_MODE=false
+AI_MAX_LOAD=2.5
 ```
 
 ---

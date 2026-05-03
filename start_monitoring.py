@@ -11,7 +11,7 @@ Usage:
 
 import sys
 import os
-from security_monitor import SecurityMonitorManager
+from monitoring.security_monitor import SecurityMonitorManager
 from utils import print_header, print_info, print_success, print_warning, print_danger
 
 def main():

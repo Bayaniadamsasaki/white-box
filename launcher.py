@@ -89,7 +89,7 @@ def main():
                 if sub == "a":
                     os.system("python -m checkers.ssh_checker && python -m checkers.user_group_checker")
                 elif sub == "b":
-                    os.system("python -m checkers.network_config_checker && python port_scanner.py")
+                    os.system("python -m checkers.network_config_checker && python -m core.port_scanner")
                 elif sub == "c":
                     os.system("python -m checkers.system_info_checker && python -m checkers.hardening_checker")
                 else:
@@ -103,7 +103,7 @@ def main():
                     ("python -m checkers.user_group_checker", "User & Groups"),
                     ("python -m checkers.hardening_checker", "System Hardening"),
                     ("python -m checkers.web_checker", "Web Services"),
-                    ("python port_scanner.py", "Port Scanning"),
+                    ("python -m core.port_scanner", "Port Scanning"),
                     ("python -m checkers.network_config_checker", "Network Config")
                 ]
                 
