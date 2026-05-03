@@ -8,7 +8,8 @@ import os
 from utils import (
     print_info, print_success, print_warning, print_danger, print_header,
     send_to_telegram, get_ai_suggestion,
-    capture_command_output, capture_read_file_content
+    capture_command_output, capture_read_file_content,
+    ensure_sudo_access, has_sudo_access
 )
 
 REQUIRED_ROOT_MESSAGE = "Peringatan: Banyak pemeriksaan dalam modul ini memerlukan hak akses root."
@@ -21,6 +22,8 @@ def run_hardening_checks():
     test_name = "Pemeriksaan Pengerasan (Hardening) Sistem"
     print_header(test_name)
 
+    ensure_sudo_access()
+
     try:
         # Check if running as root/admin (Linux/Windows compatibility)
         import getpass
@@ -31,7 +34,7 @@ def run_hardening_checks():
             if not is_admin:
                 print_warning(REQUIRED_ROOT_MESSAGE)
         else:
-            if os.geteuid() != 0:
+            if not has_sudo_access():
                 print_warning(REQUIRED_ROOT_MESSAGE)
     except:
         # Skip privilege check if not available
@@ -179,28 +182,51 @@ def run_hardening_checks():
         captured_lines.append(f"Memulai: {desc}")
         print_info(f"Memulai: {desc}")
 
-        # Skip root check on Windows, file won't exist anyway
+        def extract_stdout_from_capture(captured_text):
+            lines = []
+            for line in str(captured_text or "").splitlines():
+                if not line.startswith("    "):
+                    continue
+                trimmed = line[4:]
+                trimmed_stripped = trimmed.lstrip()
+                if trimmed_stripped.startswith("[STDERR]"):
+                    continue
+                if trimmed_stripped.startswith("[STDOUT]"):
+                    trimmed = trimmed_stripped[len("[STDOUT]"):].lstrip()
+                lines.append(trimmed)
+            return "\n".join(lines).strip()
+
+        raw_shadow_content = ""
         try:
             import platform
-            if platform.system() != "Windows" and hasattr(os, 'geteuid') and os.geteuid() != 0:
-                msg = f"Peringatan: Membaca {SHADOW_PATH} memerlukan hak root. Pengecekan dilewati."
+            is_root = platform.system() != "Windows" and hasattr(os, 'geteuid') and os.geteuid() == 0
+        except Exception:
+            is_root = False
+
+        if is_root:
+            content = capture_read_file_content(SHADOW_PATH, "Baca Shadow File")
+            captured_lines.append(content)
+            if os.path.exists(SHADOW_PATH):
+                try:
+                    with open(SHADOW_PATH, "r") as f_shadow:
+                        raw_shadow_content = f_shadow.read()
+                except Exception as e:
+                    msg = f"Gagal membaca konten mentah {SHADOW_PATH} untuk analisis: {e}"
+                    print_danger(msg)
+                    captured_lines.append(msg)
+        elif has_sudo_access():
+            content = capture_command_output(["sudo", "cat", SHADOW_PATH], "Baca Shadow File (sudo)")
+            captured_lines.append(content)
+            raw_shadow_content = extract_stdout_from_capture(content)
+            if not raw_shadow_content:
+                msg = f"Gagal membaca konten {SHADOW_PATH} melalui sudo."
                 print_warning(msg)
                 captured_lines.append(msg)
-                return "\n".join(captured_lines)
-        except:
-            pass
-
-        content = capture_read_file_content(SHADOW_PATH, "Baca Shadow File")
-        captured_lines.append(content)
-        raw_shadow_content = ""
-        if os.path.exists(SHADOW_PATH):
-            try:
-                with open(SHADOW_PATH, "r") as f_shadow:
-                    raw_shadow_content = f_shadow.read()
-            except Exception as e:
-                msg = f"Gagal membaca konten mentah {SHADOW_PATH} untuk analisis: {e}"
-                print_danger(msg)
-                captured_lines.append(msg)
+        else:
+            msg = f"Peringatan: Membaca {SHADOW_PATH} memerlukan hak root. Pengecekan dilewati."
+            print_warning(msg)
+            captured_lines.append(msg)
+            return "\n".join(captured_lines)
         
         empty_password_accounts = []
         if raw_shadow_content:

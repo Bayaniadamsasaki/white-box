@@ -6,7 +6,7 @@ Simple banner dengan opsi white box dan blackbox
 
 import os
 import sys
-from utils import Colors
+from utils import Colors, ensure_sudo_access
 
 def show_banner():
     """Display simple banner dengan opsi"""
@@ -91,6 +91,7 @@ def main():
                 elif sub == "b":
                     os.system("python -m checkers.network_config_checker && python -m core.port_scanner")
                 elif sub == "c":
+                    ensure_sudo_access()
                     os.system("python -m checkers.system_info_checker && python -m checkers.hardening_checker")
                 else:
                     os.system("python -m checkers.ssh_checker && python -m checkers.user_group_checker && python -m checkers.system_info_checker")
@@ -116,6 +117,8 @@ def main():
                     idx = int(mod_choice) - 1
                     if 0 <= idx < len(modules):
                         command, desc = modules[idx]
+                        if "hardening" in command:
+                            ensure_sudo_access()
                         print(f"Running {desc}...")
                         os.system(command)
                         wait_for_return()

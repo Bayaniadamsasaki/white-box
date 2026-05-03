@@ -6,7 +6,7 @@ Provides user-friendly interface untuk memilih scanning mode
 
 import os
 import sys
-from utils import Colors, print_success, print_info, print_warning, print_danger
+from utils import Colors, print_success, print_info, print_warning, print_danger, ensure_sudo_access
 
 def display_banner():
     """Display ASCII art banner"""
@@ -120,6 +120,7 @@ def execute_choice(choice):
         elif sub_choice == "b":
             os.system("python -m checkers.network_config_checker && python -m core.port_scanner")
         elif sub_choice == "c":
+            ensure_sudo_access()
             os.system("python -m checkers.system_info_checker && python -m checkers.hardening_checker")
         else:
             print_warning("Invalid choice, running basic system check...")
@@ -139,6 +140,7 @@ def execute_choice(choice):
         
     elif choice == "6":
         print_info("🛡️ Starting System Hardening Check...")
+        ensure_sudo_access()
         os.system("python -m checkers.hardening_checker")
         
     elif choice == "7":

@@ -9,7 +9,7 @@ import os
 from utils import (
     print_info, print_success, print_warning, print_danger, print_header,
     send_to_telegram, get_ai_suggestion,
-    capture_command_output 
+    capture_command_output, ensure_sudo_access, has_sudo_access
 )
 
 REQUIRED_ROOT_MESSAGE = "Peringatan: Membaca beberapa file log memerlukan hak akses root."
@@ -28,7 +28,8 @@ def run_log_analyzer_checks():
     test_name = "Analisis File Log"
     print_header(test_name)
 
-    if os.geteuid() != 0:
+    ensure_sudo_access()
+    if not has_sudo_access():
         print_warning(REQUIRED_ROOT_MESSAGE)
 
     all_raw_outputs = []

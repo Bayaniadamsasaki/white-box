@@ -47,7 +47,7 @@ main_scanner.py → Orchestrator utama
 
 ### **2. Real-time Monitoring System**
 ```
-monitoring/security_monitor.py → Real-time Detection Engine
+security_monitor.py → Real-time Detection Engine
 ├── Log File Monitoring (Real-time)
 ├── Network Activity Monitoring
 ├── Process Monitoring
@@ -219,42 +219,33 @@ pathlib - File system operations
 ### **File Structure:**
 ```
 null/
-├── core/                       # Core scanner utilities
-│   ├── host_utils.py
-│   ├── port_scanner.py
-│   └── root_checks.py
-├── analysis/
-│   └── log_analyzer.py
-├── monitoring/
-│   └── security_monitor.py
-├── tools/
-│   └── emergency_ubuntu_fix.py
-├── checkers/                   # 25+ security modules
-├── backup/
-├── scripts/
-├── docs/
-├── main_scanner.py
-├── start_monitoring.py
-├── cli_menu.py
-├── launcher.py
-├── utils.py
-├── requirements.txt
-├── env.example
-└── .env
+├── Core Scanner Modules
+│   ├── main_scanner.py              # Main orchestrator
+│   ├── system_info_checker.py       # System information
+│   ├── network_config_checker.py    # Network configuration
+│   ├── user_group_checker.py        # User management
+│   ├── security_module_checker.py   # Security modules
+│   └── [25+ security modules]       # Specialized checks
+│
+├── Monitoring System
+│   ├── security_monitor.py          # Real-time monitoring
+│   ├── start_monitoring.py          # Monitoring launcher
+│   └── attack_simulator.py          # Testing framework
+│
+├── AI & Communication
+│   ├── utils.py                     # AI & Telegram integration
+│   └── security_config.py          # Configuration management
+│
+├── Documentation
+│   ├── README.md                    # Project overview
+│   ├── MONITORING_GUIDE.md         # Monitoring documentation
+│   └── Dokumentasi Projek.md       # This file
+│
+└── Configuration
+    ├── requirements.txt             # Dependencies
+    ├── .env.example                # Configuration template
+    └── deploy_ubuntu.sh            # Deployment script
 ```
-
-### **Pengelompokan Berkas Utama**
-Untuk memudahkan navigasi, berkas di root dikelompokkan berdasarkan fungsi utamanya:
-
-- **Core scanner**: main_scanner.py, core/ (host_utils.py, port_scanner.py, root_checks.py)
-- **Monitoring**: start_monitoring.py, monitoring/security_monitor.py
-- **Analisis & laporan**: analysis/log_analyzer.py
-- **CLI & launcher**: cli_menu.py, launcher.py
-- **Utilities**: utils.py, tools/emergency_ubuntu_fix.py
-- **Konfigurasi**: requirements.txt, env.example, .env
-- **Dokumentasi**: README.md, docs/
-- **Modul pemeriksaan**: checkers/ (kumpulan modul pemeriksaan keamanan)
-- **Cadangan & utilitas tambahan**: backup/, scripts/
 
 ---
 

@@ -2,6 +2,9 @@ import os
 import requests 
 import json 
 import subprocess 
+import platform
+import shutil
+import sys
 from dotenv import load_dotenv
 import re
 import time
@@ -15,6 +18,59 @@ def escape_markdown_v2(text):
     escape_chars = r'\_*[]()~`>#+-=|{}.!'
     return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
 load_dotenv()
+
+SUDO_READY = False
+SUDO_UNAVAILABLE = False
+
+def _has_sudo_command():
+    return shutil.which("sudo") is not None
+
+def has_sudo_access():
+    if platform.system() == "Windows":
+        return False
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        return True
+    if not _has_sudo_command():
+        return False
+    try:
+        result = subprocess.run(["sudo", "-n", "true"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return result.returncode == 0
+    except Exception:
+        return False
+
+def ensure_sudo_access():
+    global SUDO_READY, SUDO_UNAVAILABLE
+    if SUDO_READY:
+        return True
+    if SUDO_UNAVAILABLE:
+        return False
+    if platform.system() == "Windows":
+        SUDO_UNAVAILABLE = True
+        return False
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        SUDO_READY = True
+        return True
+    if not _has_sudo_command():
+        SUDO_UNAVAILABLE = True
+        return False
+    if has_sudo_access():
+        SUDO_READY = True
+        return True
+    if not sys.stdin.isatty():
+        SUDO_UNAVAILABLE = True
+        return False
+    print_info("🔐 Memerlukan akses sudo untuk beberapa pemeriksaan. Masukkan password jika diminta...")
+    try:
+        result = subprocess.run(["sudo", "-v"])
+    except Exception as e:
+        print_warning(f"Gagal melakukan autentikasi sudo: {e}")
+        SUDO_UNAVAILABLE = True
+        return False
+    if result.returncode == 0:
+        SUDO_READY = True
+        return True
+    SUDO_UNAVAILABLE = True
+    return False
 
 class Colors:
     
@@ -45,21 +101,41 @@ def print_header(message, char="-", color_code=Colors.HEADER):
 
 def capture_command_output(command_input, test_description, suppress_output=False, shell=False):
     captured_output_lines = []
+    command_to_run = command_input
     command_to_log = ""
+    use_shell = shell
+
     if isinstance(command_input, list):
-        command_to_log = ' '.join(command_input)
-        command_to_log = command_input
+        command_to_log = " ".join(command_input)
+        if any(token in ("|", ">", ">>", "<", "2>", "2>&1") for token in command_input):
+            use_shell = True
+            command_to_run = " ".join(command_input)
+    else:
+        command_to_log = str(command_input)
+
+    uses_sudo = False
+    if isinstance(command_input, list):
+        uses_sudo = bool(command_input) and command_input[0] == "sudo"
+    elif isinstance(command_input, str):
+        uses_sudo = command_input.lstrip().startswith("sudo ")
 
     if not suppress_output:
         print_info(f"Menjalankan tes: {test_description} (Perintah: '{command_to_log}')")
     
     captured_output_lines.append(f"Test: {test_description} (Cmd: '{command_to_log}')")
 
+    if uses_sudo and not ensure_sudo_access():
+        msg = f"Peringatan: Akses sudo belum tersedia. Tes '{test_description}' dilewati."
+        if not suppress_output:
+            print_warning(msg)
+        captured_output_lines.append(msg)
+        return "\n".join(captured_output_lines)
+
     try:
-        if shell and isinstance(command_input, list):
-            command_input = ' '.join(command_input)
+        if use_shell and isinstance(command_to_run, list):
+            command_to_run = " ".join(command_to_run)
         
-        result = subprocess.run(command_input, capture_output=True, text=True, check=False, timeout=20, shell=shell)
+        result = subprocess.run(command_to_run, capture_output=True, text=True, check=False, timeout=20, shell=use_shell)
         
         if result.returncode == 0:
             if not suppress_output:
