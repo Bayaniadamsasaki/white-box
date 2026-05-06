@@ -50,9 +50,13 @@ class ToolSignatureDetector:
             'katana': 'LOW', 'subfinder': 'LOW', 'paramspider': 'MEDIUM'
         }
 
-    def detect_tool(self, log_entry: str) -> Optional[str]:
+    def detect_tool(self, log_entry: str, target_tool: str = None) -> Optional[str]:
         log_lower = log_entry.lower()
         tools_by_priority = ['nuclei', 'ffuf', 'katana', 'paramspider', 'subfinder', 'nmap']
+        
+        if target_tool and target_tool.lower() in tools_by_priority:
+            tools_by_priority = [target_tool.lower()]
+            
         for tool_name in tools_by_priority:
             for pattern in self.tool_signatures[tool_name]['patterns']:
                 if re.search(pattern, log_lower, re.IGNORECASE):
@@ -60,10 +64,11 @@ class ToolSignatureDetector:
         return None
 
 class SecurityMonitorManager:
-    def __init__(self):
+    def __init__(self, target_tool: str = None):
         self.detector = ToolSignatureDetector()
         self.events = []
         self.log_paths = self._setup_log_paths()
+        self.target_tool = target_tool
 
     def _setup_log_paths(self):
         log_paths = []
@@ -103,7 +108,7 @@ class SecurityMonitorManager:
                 try:
                     if proc.info['cmdline']:
                         cmdline = ' '.join(proc.info['cmdline'])
-                        tool_detected = self.detector.detect_tool(cmdline)
+                        tool_detected = self.detector.detect_tool(cmdline, self.target_tool)
                         if tool_detected:
                             print_warning(f"Security tool detected: {tool_detected} (PID: {proc.info['pid']})")
                             event = SecurityEvent(
@@ -131,7 +136,7 @@ class SecurityMonitorManager:
                     for line in recent_lines:
                         line = line.strip()
                         if line:
-                            tool_detected = self.detector.detect_tool(line)
+                            tool_detected = self.detector.detect_tool(line, self.target_tool)
                             if tool_detected:
                                 print_warning(f"Attack pattern detected in {log_path}: {tool_detected}")
                                 event = SecurityEvent(
@@ -145,12 +150,12 @@ class SecurityMonitorManager:
             except Exception as e:
                 print_warning(f"Error reading log {log_path}: {e}")
 
-def run_blackbox_checks():
-    test_name = "Black-box Security Attack Detection"
+def run_blackbox_checks(target_tool: str = None):
+    test_name = f"Black-box Security Attack Detection{'' if not target_tool else f' ({target_tool.upper()})'}"
     print_header(test_name)
     try:
-        manager = SecurityMonitorManager()
-        print_info("\n🔍 Starting Black-box One-time Scan Mode...")
+        manager = SecurityMonitorManager(target_tool)
+        print_info(f"\n🔍 Starting Black-box One-time Scan Mode{'' if not target_tool else f' for {target_tool.upper()}'}...")
         events = manager.start_monitoring_sync()
         if events:
             print_success(f"\n✅ Scan selesai. Ditemukan {len(events)} security events:")
@@ -171,4 +176,8 @@ def run_blackbox_checks():
         print_danger(error_msg)
 
 if __name__ == "__main__":
-    run_blackbox_checks()
+    import sys
+    tool = None
+    if len(sys.argv) > 2 and sys.argv[1] == "--tool":
+        tool = sys.argv[2]
+    run_blackbox_checks(tool)

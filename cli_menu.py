@@ -80,15 +80,21 @@ def display_menu():
 {Colors.WARNING}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.WARNING}│                        🎯 BLACK-BOX SECURITY                        │{Colors.ENDC}
 {Colors.WARNING}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-  {Colors.BOLD}[7]{Colors.ENDC} 🎯 Black-box Single Scan      - Detect Nmap, Nuclei, FFUF, Subfinder, dll
+  {Colors.BOLD}[7]{Colors.ENDC} 🎯 Detect All Tools       - Full scan for all attack tools
+  {Colors.BOLD}[8]{Colors.ENDC} 🔍 Detect Nmap            - Scan for Nmap activities
+  {Colors.BOLD}[9]{Colors.ENDC} ☢️  Detect Nuclei          - Scan for Nuclei activities
+  {Colors.BOLD}[10]{Colors.ENDC} 🚀 Detect FFUF           - Scan for FFUF activities
+  {Colors.BOLD}[11]{Colors.ENDC} 🌐 Detect Subfinder      - Scan for Subfinder activities
+  {Colors.BOLD}[12]{Colors.ENDC} 🕷️  Detect Katana          - Scan for Katana activities
+  {Colors.BOLD}[13]{Colors.ENDC} 🔍 Detect ParamSpider    - Scan for ParamSpider activities
 
 {Colors.OKBLUE}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.OKBLUE}│                       ⚙️ CONFIGURATION & TOOLS                     │{Colors.ENDC}
 {Colors.OKBLUE}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-    {Colors.BOLD}[8]{Colors.ENDC} ⚙️  Setup Configuration         - Configure Telegram & AI
-    {Colors.BOLD}[9]{Colors.ENDC} 🤖 Test AI Connection          - Verify Ollama AI setup
-    {Colors.BOLD}[10]{Colors.ENDC} 📱 Test Telegram Bot           - Verify notification setup
-    {Colors.BOLD}[11]{Colors.ENDC} 📋 View Commands Guide          - Show all available commands
+    {Colors.BOLD}[14]{Colors.ENDC} ⚙️  Setup Configuration    - Configure Telegram & AI
+    {Colors.BOLD}[15]{Colors.ENDC} 🤖 Test AI Connection     - Verify Ollama AI setup
+    {Colors.BOLD}[16]{Colors.ENDC} 📱 Test Telegram Bot      - Verify notification setup
+    {Colors.BOLD}[17]{Colors.ENDC} 📋 View Commands Guide     - Show all available commands
 
 {Colors.HEADER}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.HEADER}│                          🚪 EXIT OPTIONS                            │{Colors.ENDC}
@@ -141,10 +147,34 @@ def execute_choice(choice):
         os.system("python -m checkers.hardening_checker")
         
     elif choice == "7":
-        print_info("🎯 Starting Black-box Single Scan...")
+        print_info("🎯 Starting Full Black-box Scan...")
         os.system("python -m checkers.blackbox_checker")
         
     elif choice == "8":
+        print_info("🔍 Starting Nmap Detection...")
+        os.system("python -m checkers.blackbox_checker --tool nmap")
+
+    elif choice == "9":
+        print_info("☢️ Starting Nuclei Detection...")
+        os.system("python -m checkers.blackbox_checker --tool nuclei")
+
+    elif choice == "10":
+        print_info("🚀 Starting FFUF Detection...")
+        os.system("python -m checkers.blackbox_checker --tool ffuf")
+
+    elif choice == "11":
+        print_info("🌐 Starting Subfinder Detection...")
+        os.system("python -m checkers.blackbox_checker --tool subfinder")
+
+    elif choice == "12":
+        print_info("🕷️ Starting Katana Detection...")
+        os.system("python -m checkers.blackbox_checker --tool katana")
+
+    elif choice == "13":
+        print_info("🔍 Starting ParamSpider Detection...")
+        os.system("python -m checkers.blackbox_checker --tool paramspider")
+        
+    elif choice == "14":
         print_info("⚙️ Opening Configuration Setup...")
         if os.name == 'nt':  # Windows
             os.system("notepad .env")
@@ -152,7 +182,7 @@ def execute_choice(choice):
             os.system("nano .env")
         print_info("Configuration saved. Please restart the application.")
         
-    elif choice == "9":
+    elif choice == "15":
         print_info("🤖 Testing AI Connection...")
         try:
             from utils import get_ollama_suggestion
@@ -164,7 +194,7 @@ def execute_choice(choice):
         except Exception as e:
             print_danger(f"❌ AI connection failed: {e}")
             
-    elif choice == "10":
+    elif choice == "16":
         print_info("📱 Testing Telegram Bot...")
         try:
             from utils import send_to_telegram
@@ -173,7 +203,7 @@ def execute_choice(choice):
         except Exception as e:
             print_danger(f"❌ Telegram connection failed: {e}")
             
-    elif choice == "11":
+    elif choice == "17":
         print_info("📋 Opening Commands Guide...")
         if os.name == 'nt':  # Windows
             os.system("type docs\\COMMANDS_GUIDE.md | more")
@@ -185,7 +215,7 @@ def execute_choice(choice):
         sys.exit(0)
         
     else:
-        print_danger("❌ Invalid choice! Please select 0-11")
+        print_danger("❌ Invalid choice! Please select 0-17")
 
 def main():
     """Main interactive CLI function"""
@@ -200,7 +230,7 @@ def main():
             display_menu()
             
             # Get user choice
-            choice = input(f"\n{Colors.BOLD}Pilih opsi [0-11]: {Colors.ENDC}").strip()
+            choice = input(f"\n{Colors.BOLD}Pilih opsi [0-17]: {Colors.ENDC}").strip()
             
             if choice:
                 print(f"\n{Colors.OKBLUE}{'='*75}{Colors.ENDC}")
