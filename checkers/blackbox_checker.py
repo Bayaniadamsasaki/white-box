@@ -163,8 +163,10 @@ class SecurityMonitorManager:
                                 "Starting FFUF Detection",
                                 "Starting Subfinder Detection",
                                 "Starting Katana Detection",
+                                "Starting Katana Detection",
                                 "Starting ParamSpider Detection",
-                                "Starting Black-box One-time Scan"
+                                "Starting Black-box One-time Scan",
+                                "Black-box Security Attack Detection"
                             ]
                             
                             if any(phrase in line for phrase in ignore_phrases):
@@ -172,11 +174,15 @@ class SecurityMonitorManager:
                                 
                             tool_detected = self.detector.detect_tool(line, self.target_tool)
                             if tool_detected:
-                                print_warning(f"Attack pattern detected in {log_path}: {tool_detected}")
+                                # Extract IP address if available
+                                ip_match = re.search(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', line)
+                                source_ip = ip_match.group(0) if ip_match else "unknown"
+                                
+                                print_warning(f"Attack pattern detected in {log_path}: {tool_detected} (Source IP: {source_ip})")
                                 event = SecurityEvent(
                                     timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                     tool_name=tool_detected, attack_type="log",
-                                    source_ip="unknown", target="localhost",
+                                    source_ip=source_ip, target="localhost",
                                     severity=self.detector.severity_mapping.get(tool_detected, "HIGH"),
                                     details={"log_file": log_path}, raw_log=line
                                 )
@@ -199,7 +205,8 @@ def run_blackbox_checks(target_tool: str = None):
             # AI Analysis and Telegram Alert for the findings
             findings_data = f"Ditemukan {len(events)} black-box security events:\n"
             for ev in events:
-                findings_data += f"- {ev.tool_name} ({ev.attack_type}): {ev.raw_log[:100]}\n"
+                ip_info = f" [IP: {ev.source_ip}]" if ev.source_ip != "localhost" and ev.source_ip != "unknown" else ""
+                findings_data += f"- {ev.tool_name}{ip_info} ({ev.attack_type}): {ev.raw_log[:100]}\n"
             
             ai_saran = get_ai_suggestion(test_name, findings_data)
             send_to_telegram(test_name, findings_data, ai_saran)
