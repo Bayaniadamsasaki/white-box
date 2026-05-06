@@ -95,6 +95,13 @@ def display_menu():
     {Colors.BOLD}[15]{Colors.ENDC} 🤖 Test AI Connection     - Verify Ollama AI setup
     {Colors.BOLD}[16]{Colors.ENDC} 📱 Test Telegram Bot      - Verify notification setup
     {Colors.BOLD}[17]{Colors.ENDC} 📋 View Commands Guide     - Show all available commands
+    
+{Colors.HEADER}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
+{Colors.HEADER}│                        👀 SERVER LOG MONITORING                     │{Colors.ENDC}
+{Colors.HEADER}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
+    {Colors.BOLD}[18]{Colors.ENDC} 📜 Tail Nginx Access Log  - View real-time web access
+    {Colors.BOLD}[19]{Colors.ENDC} 📜 Tail Nginx Error Log   - View real-time web errors
+    {Colors.BOLD}[20]{Colors.ENDC} 📜 Tail Auth Log          - View real-time SSH logins
 
 {Colors.HEADER}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.HEADER}│                          🚪 EXIT OPTIONS                            │{Colors.ENDC}
@@ -209,13 +216,34 @@ def execute_choice(choice):
             os.system("type docs\\COMMANDS_GUIDE.md | more")
         else:  # Linux/Mac
             os.system("less docs/COMMANDS_GUIDE.md")
+
+    elif choice == "18":
+        print_info("👀 Real-time Nginx Access Log (Press Ctrl+C to exit)...")
+        if os.name == 'nt':
+            print_warning("Perintah tail tidak didukung secara native di Windows.")
+        else:
+            os.system("tail -f /var/log/nginx/access.log")
+
+    elif choice == "19":
+        print_info("👀 Real-time Nginx Error Log (Press Ctrl+C to exit)...")
+        if os.name == 'nt':
+            print_warning("Perintah tail tidak didukung secara native di Windows.")
+        else:
+            os.system("tail -f /var/log/nginx/error.log")
+
+    elif choice == "20":
+        print_info("👀 Real-time Auth Log (Press Ctrl+C to exit)...")
+        if os.name == 'nt':
+            print_warning("Perintah tail tidak didukung secara native di Windows.")
+        else:
+            os.system("tail -f /var/log/auth.log")
             
     elif choice == "0":
         print_success("👋 Terima kasih telah menggunakan NULL Security System!")
         sys.exit(0)
         
     else:
-        print_danger("❌ Invalid choice! Please select 0-17")
+        print_danger("❌ Invalid choice! Please select 0-20")
 
 def main():
     """Main interactive CLI function"""
@@ -230,7 +258,7 @@ def main():
             display_menu()
             
             # Get user choice
-            choice = input(f"\n{Colors.BOLD}Pilih opsi [0-17]: {Colors.ENDC}").strip()
+            choice = input(f"\n{Colors.BOLD}Pilih opsi [0-20]: {Colors.ENDC}").strip()
             
             if choice:
                 print(f"\n{Colors.OKBLUE}{'='*75}{Colors.ENDC}")
