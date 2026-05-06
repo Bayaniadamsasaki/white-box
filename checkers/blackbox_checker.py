@@ -87,6 +87,9 @@ class SecurityMonitorManager:
                     try:
                         for file in os.listdir(path):
                             if file.endswith(('.log', '.txt')):
+                                # Abaikan file log bawaan dari aplikasi ini sendiri (scan_YYYYMMDD.log)
+                                if file.startswith('scan_') and file.endswith('.log'):
+                                    continue
                                 log_paths.append(os.path.join(path, file))
                     except PermissionError:
                         continue
@@ -163,10 +166,10 @@ class SecurityMonitorManager:
                                 "Starting FFUF Detection",
                                 "Starting Subfinder Detection",
                                 "Starting Katana Detection",
-                                "Starting Katana Detection",
                                 "Starting ParamSpider Detection",
                                 "Starting Black-box One-time Scan",
-                                "Black-box Security Attack Detection"
+                                "Black-box Security Attack Detection",
+                                "detected at 202"  # Abaikan baris summary "[!] - nmap detected at 2026..."
                             ]
                             
                             if any(phrase in line for phrase in ignore_phrases):
