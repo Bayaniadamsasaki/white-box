@@ -154,7 +154,20 @@ class SecurityMonitorManager:
                         line = line.strip()
                         if line:
                             # Skip our own output patterns to prevent recursive detection in older logs
-                            if "Security tool detected:" in line or "Attack pattern detected in" in line:
+                            ignore_phrases = [
+                                "Security tool detected:", 
+                                "Attack pattern detected in",
+                                "Starting Full Black-box",
+                                "Starting Nmap Detection",
+                                "Starting Nuclei Detection",
+                                "Starting FFUF Detection",
+                                "Starting Subfinder Detection",
+                                "Starting Katana Detection",
+                                "Starting ParamSpider Detection",
+                                "Starting Black-box One-time Scan"
+                            ]
+                            
+                            if any(phrase in line for phrase in ignore_phrases):
                                 continue
                                 
                             tool_detected = self.detector.detect_tool(line, self.target_tool)
