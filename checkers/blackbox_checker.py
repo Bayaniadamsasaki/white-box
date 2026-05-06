@@ -104,10 +104,19 @@ class SecurityMonitorManager:
 
     def _scan_processes(self):
         try:
+            current_pid = os.getpid()
             for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
                 try:
+                    if proc.info['pid'] == current_pid:
+                        continue
+                        
                     if proc.info['cmdline']:
                         cmdline = ' '.join(proc.info['cmdline'])
+                        
+                        # Ignore self-invocation
+                        if 'blackbox_checker' in cmdline:
+                            continue
+                            
                         tool_detected = self.detector.detect_tool(cmdline, self.target_tool)
                         if tool_detected:
                             print_warning(f"Security tool detected: {tool_detected} (PID: {proc.info['pid']})")
@@ -126,9 +135,17 @@ class SecurityMonitorManager:
             print_warning(f"Error scanning processes: {e}")
 
     def _check_recent_logs(self):
+        # Ignore our own active log file if we are logging
+        from utils import LOG_FILE_PATH
+        
         for log_path in self.log_paths:
             if not os.path.exists(log_path):
                 continue
+                
+            # Skip current session's log file to prevent infinite recursive detection
+            if LOG_FILE_PATH and os.path.abspath(log_path) == os.path.abspath(LOG_FILE_PATH):
+                continue
+                
             try:
                 with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
                     lines = f.readlines()
@@ -136,6 +153,10 @@ class SecurityMonitorManager:
                     for line in recent_lines:
                         line = line.strip()
                         if line:
+                            # Skip our own output patterns to prevent recursive detection in older logs
+                            if "Security tool detected:" in line or "Attack pattern detected in" in line:
+                                continue
+                                
                             tool_detected = self.detector.detect_tool(line, self.target_tool)
                             if tool_detected:
                                 print_warning(f"Attack pattern detected in {log_path}: {tool_detected}")
