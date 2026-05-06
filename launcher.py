@@ -38,7 +38,7 @@ def show_options():
 {Colors.WARNING}┌─ 🎯 BLACK-BOX SECURITY SCANNING ─────────────────────────────────────┐{Colors.ENDC}
 {Colors.WARNING}│  External System Attack Detection                                     │{Colors.ENDC}
 {Colors.WARNING}└───────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-  {Colors.BOLD}[4]{Colors.ENDC} 🎯 Black-box Single Scan   - Scan logs & processes for attack tools
+  {Colors.BOLD}[4]{Colors.ENDC} 🎯 Black-box Single Scan   - Detect Nmap, Nuclei, FFUF, Subfinder, dll
 
 {Colors.OKBLUE}┌─ ⚙️ CONFIGURATION & HELP ────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.OKBLUE}│  System Configuration, Testing & Documentation                        │{Colors.ENDC}

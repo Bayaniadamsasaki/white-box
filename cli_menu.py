@@ -80,7 +80,7 @@ def display_menu():
 {Colors.WARNING}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.WARNING}│                        🎯 BLACK-BOX SECURITY                        │{Colors.ENDC}
 {Colors.WARNING}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-  {Colors.BOLD}[7]{Colors.ENDC} 🎯 Black-box Single Scan      - Scan logs & processes for attack tools
+  {Colors.BOLD}[7]{Colors.ENDC} 🎯 Black-box Single Scan      - Detect Nmap, Nuclei, FFUF, Subfinder, dll
 
 {Colors.OKBLUE}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.OKBLUE}│                       ⚙️ CONFIGURATION & TOOLS                     │{Colors.ENDC}
