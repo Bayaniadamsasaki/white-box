@@ -24,6 +24,12 @@ Thumbs.db
 *.swp
 *.swo
 
+# DOC
+skripsi/
+*.docx
+*.pdf
+*.doc
+
 # Temporary files
 *.tmp
 *.temp

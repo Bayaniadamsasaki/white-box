@@ -5,10 +5,13 @@ import subprocess
 import platform
 import shutil
 import sys
+import atexit
+from datetime import datetime
 from dotenv import load_dotenv
 import re
 import time
 import random
+import threading
 
 def escape_markdown(text):
     escape_chars = r'\_*[]()~`>#+-=|{}.!'
@@ -18,6 +21,63 @@ def escape_markdown_v2(text):
     escape_chars = r'\_*[]()~`>#+-=|{}.!'
     return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
 load_dotenv()
+
+AUTO_LOG = os.getenv("AUTO_LOG", "true").strip().lower() != "false"
+LOG_DIR = os.getenv("LOG_DIR", "logs")
+LOG_FILE_PATH = None
+_LOG_FILE_HANDLE = None
+_LOG_LOCK = threading.Lock()
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+def _sanitize_log_text(text):
+    if text is None:
+        return ""
+    return _ANSI_ESCAPE_RE.sub("", str(text))
+
+def _init_log_file():
+    global LOG_FILE_PATH, _LOG_FILE_HANDLE
+    if not AUTO_LOG:
+        return
+    try:
+        log_dir = LOG_DIR
+        if not os.path.isabs(log_dir):
+            log_dir = os.path.join(os.getcwd(), log_dir)
+        os.makedirs(log_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        LOG_FILE_PATH = os.path.join(log_dir, f"scan_{timestamp}.log")
+        _LOG_FILE_HANDLE = open(LOG_FILE_PATH, "a", encoding="utf-8")
+        _LOG_FILE_HANDLE.write(f"{datetime.now().isoformat()} Auto-log enabled.\n")
+        _LOG_FILE_HANDLE.flush()
+    except Exception:
+        LOG_FILE_PATH = None
+        _LOG_FILE_HANDLE = None
+
+def _close_log_file():
+    global _LOG_FILE_HANDLE
+    if _LOG_FILE_HANDLE:
+        try:
+            _LOG_FILE_HANDLE.flush()
+            _LOG_FILE_HANDLE.close()
+        except Exception:
+            pass
+        _LOG_FILE_HANDLE = None
+
+def _log_line(message):
+    if not _LOG_FILE_HANDLE:
+        return
+    cleaned = _sanitize_log_text(message).rstrip()
+    if not cleaned:
+        return
+    with _LOG_LOCK:
+        _LOG_FILE_HANDLE.write(f"{datetime.now().isoformat()} {cleaned}\n")
+        _LOG_FILE_HANDLE.flush()
+
+def _log_lines(lines):
+    for line in lines:
+        _log_line(line)
+
+_init_log_file()
+atexit.register(_close_log_file)
 
 SUDO_READY = False
 SUDO_UNAVAILABLE = False
@@ -85,19 +145,29 @@ class Colors:
     UNDERLINE = '\033[4m'
 
 def print_success(message):
-    print(f"{Colors.OKGREEN}[+] {message}{Colors.ENDC}")
+    line = f"[+] {message}"
+    _log_line(line)
+    print(f"{Colors.OKGREEN}{line}{Colors.ENDC}")
 
 def print_warning(message):
-    print(f"{Colors.WARNING}[!] {message}{Colors.ENDC}")
+    line = f"[!] {message}"
+    _log_line(line)
+    print(f"{Colors.WARNING}{line}{Colors.ENDC}")
 
 def print_danger(message):
-    print(f"{Colors.FAIL}[-] {message}{Colors.ENDC}")
+    line = f"[-] {message}"
+    _log_line(line)
+    print(f"{Colors.FAIL}{line}{Colors.ENDC}")
 
 def print_info(message):
-    print(f"{Colors.OKBLUE}[*] {message}{Colors.ENDC}")
+    line = f"[*] {message}"
+    _log_line(line)
+    print(f"{Colors.OKBLUE}{line}{Colors.ENDC}")
 
 def print_header(message, char="-", color_code=Colors.HEADER):
-    print(f"{color_code}{Colors.BOLD}\n{char*3} {message} {char*3}{Colors.ENDC}")
+    header_line = f"{char*3} {message} {char*3}"
+    _log_line(header_line)
+    print(f"{color_code}{Colors.BOLD}\n{header_line}{Colors.ENDC}")
 
 def capture_command_output(command_input, test_description, suppress_output=False, shell=False):
     captured_output_lines = []
@@ -129,6 +199,7 @@ def capture_command_output(command_input, test_description, suppress_output=Fals
         if not suppress_output:
             print_warning(msg)
         captured_output_lines.append(msg)
+        _log_lines(captured_output_lines)
         return "\n".join(captured_output_lines)
 
     try:
@@ -178,6 +249,7 @@ def capture_command_output(command_input, test_description, suppress_output=Fals
         if not suppress_output: print_danger(err_msg)
         captured_output_lines.append(err_msg)
     
+    _log_lines(captured_output_lines)
     final_output_str = "\n".join(captured_output_lines)
     return final_output_str
 
@@ -235,6 +307,7 @@ def capture_read_file_content(file_path, test_description, suppress_output=False
         err_msg = f"File '{file_path}' tidak ditemukan untuk tes '{test_description}'."
         log_and_print(err_msg, "warning", to_capture=True)
     
+    _log_lines(captured_output_lines)
     return "\n".join(captured_output_lines)
 
 
