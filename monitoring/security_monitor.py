@@ -416,6 +416,10 @@ class SecurityMonitorManager:
         self.events = []
         self.monitoring_active = False
         self.continuous_mode = False
+        self.ai_alert_cooldown_sec = int(os.getenv("AI_ALERT_COOLDOWN_SEC", "300"))
+        self._last_ai_alert = {}
+        self._suppressed_counts = defaultdict(int)
+        self._suppressed_last_detail = {}
         
         # Setup log monitoring paths
         self.log_paths = self._setup_log_paths()
@@ -597,6 +601,9 @@ class SecurityMonitorManager:
     def _handle_attack_detection(self, tool_name, details, source_type):
         """Handle ketika serangan terdeteksi - langsung analisis"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        event_key = f"{tool_name}:{source_type}"
+        now_ts = time.time()
+        last_ts = self._last_ai_alert.get(event_key, 0)
         
         print_danger(f"\n🚨 SERANGAN TERDETEKSI! [{timestamp}]")
         print_warning(f"Tool: {tool_name}")
@@ -616,6 +623,24 @@ class SecurityMonitorManager:
         )
         
         self.events.append(event)
+
+        # Rate limit AI analysis for repeated attacks of the same type
+        if self.ai_alert_cooldown_sec > 0 and (now_ts - last_ts) < self.ai_alert_cooldown_sec:
+            self._suppressed_counts[event_key] += 1
+            self._suppressed_last_detail[event_key] = details
+            print_info(
+                f"AI analysis disuppressed untuk '{tool_name}' (cooldown {self.ai_alert_cooldown_sec}s)."
+            )
+            return
+
+        self._last_ai_alert[event_key] = now_ts
+        suppressed_count = self._suppressed_counts.pop(event_key, 0)
+        if suppressed_count:
+            event.details["suppressed_count"] = suppressed_count
+            event.details["suppressed_window_sec"] = self.ai_alert_cooldown_sec
+            last_detail = self._suppressed_last_detail.pop(event_key, None)
+            if last_detail:
+                event.details["last_suppressed_detail"] = last_detail
         
         # Langsung lakukan analisis
         self._immediate_analysis(event)
