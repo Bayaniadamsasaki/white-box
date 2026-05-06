@@ -1,8 +1,8 @@
 #!/bin/bash
 # Ubuntu Server Deployment Script
-# Script untuk deploy Security Scanner & Attack Detection System ke Ubuntu Server
+# Script untuk deploy Security Scanner ke Ubuntu Server
 
-echo "=== Security Scanner & Attack Detection System ==="
+echo "=== Security Scanner System ==="
 echo "Ubuntu Server Deployment Script"
 echo "================================================="
 
@@ -63,26 +63,6 @@ if [ ! -f ".env" ]; then
     echo "  - Install Ollama AI with: curl -fsSL https://ollama.ai/install.sh | sh"
 fi
 
-# Create systemd service file (optional)
-echo -e "\nCreating systemd service file..."
-sudo tee /etc/systemd/system/security-monitor.service > /dev/null <<EOF
-[Unit]
-Description=Security Tools Attack Detection & Monitoring
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=$PROJECT_DIR
-Environment=PATH=$PROJECT_DIR/env/bin
-ExecStart=$PROJECT_DIR/env/bin/python start_monitoring.py --continuous
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
 # Set permissions
 echo -e "\nSetting permissions..."
 sudo chown -R $USER:$USER "$PROJECT_DIR"
@@ -116,17 +96,14 @@ echo
 echo "4. Run full security scan (MAIN COMMAND):"
 echo "   sudo $PROJECT_DIR/env/bin/python main_scanner.py"
 echo
-echo "5. Enable auto-start monitoring service (optional):"
-echo "   sudo systemctl enable security-monitor"
-echo "   sudo systemctl start security-monitor"
+echo "5. (Optional) Review logs folder after scans:"
+echo "   $PROJECT_DIR/logs/"
 echo
 echo "📊 TESTING:"
 echo "- Host utilities test: python -m core.host_utils"
 echo "- Full system scan: python main_scanner.py"
-echo "- Real-time monitoring: python start_monitoring.py --continuous"
 echo
 echo "📜 LOGS akan tersimpan di:"
-echo "- /var/log/security-scanner/"
-echo "- $PROJECT_DIR/security_monitor.log"
+echo "- $PROJECT_DIR/logs/"
 echo
 echo "🚀 System ready! Just run: sudo python main_scanner.py"

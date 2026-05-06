@@ -4,7 +4,6 @@ import os # Untuk os.geteuid() agar lebih konsisten dengan root_checks.is_root()
 import utils # Baru ditambahkan
 from core import host_utils, port_scanner, root_checks
 from analysis import log_analyzer
-from monitoring import security_monitor
 from checkers import (
     auditd_checker,
     compilers_presence_checker,
@@ -87,10 +86,6 @@ def main():
         utils.print_warning("    - Detail Core Dump (core_dump_checker.py)")
         utils.print_info("    Untuk hasil paling komprehensif, jalankan skrip ini menggunakan sudo.")
 
-    # Security monitoring untuk deteksi serangan real-time (untuk semua user)
-    utils.print_header("Security Attack Detection & Monitoring", color_code=utils.Colors.WARNING)
-    security_monitor.run_security_monitoring_checks()
-
     utils.print_header("Pemindaian Jaringan Lokal", color_code=utils.Colors.OKGREEN)
     target_host = "localhost"
     utils.print_info(f"Memulai pemindaian jaringan otomatis untuk {target_host}")
@@ -124,26 +119,5 @@ def main():
     
     utils.print_header("SEMUA PENGUJIAN SELESAI", char="=", color_code=utils.Colors.OKBLUE)
     
-    # Tawarkan continuous monitoring
-    utils.print_header("Opsi Real-time Security Monitoring", color_code=utils.Colors.WARNING)
-    utils.print_info("Scan awal telah selesai. Anda dapat memulai monitoring real-time untuk mendeteksi serangan.")
-    utils.print_info("Mode monitoring akan:")
-    utils.print_info("• Memantau log files secara real-time")
-    utils.print_info("• Mendeteksi aktivitas tools seperti Subfinder, Katana, FFUF, Nuclei, Nmap, ParamSpider")
-    utils.print_info("• Melakukan analisis AI otomatis ketika serangan terdeteksi")
-    utils.print_info("• Mengirim notifikasi Telegram langsung")
-    
-    try:
-        choice = input("\nApakah ingin memulai continuous monitoring? (y/n): ").strip().lower()
-        if choice in ['y', 'yes', 'ya']:
-            utils.print_success("🚀 Memulai Continuous Security Monitoring...")
-            monitor_manager = security_monitor.SecurityMonitorManager()
-            monitor_manager.start_continuous_monitoring()
-        else:
-            utils.print_info("Monitoring tidak dimulai. Anda dapat menjalankannya nanti dengan:")
-            utils.print_info("python start_monitoring.py --continuous")
-    except KeyboardInterrupt:
-        utils.print_info("\nExiting...")
-
 if __name__ == "__main__":
     main()

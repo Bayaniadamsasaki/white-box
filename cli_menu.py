@@ -19,7 +19,7 @@ def display_banner():
     ╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚══════╝     ╚══════╝╚══════╝ ╚═════╝
 {Colors.ENDC}
 {Colors.HEADER}{Colors.BOLD}            🛡️  INTEGRATED CYBERSECURITY SCANNER  🛡️{Colors.ENDC}
-{Colors.OKGREEN}        🔍 White-box Security Assessment + 🚨 Real-time Attack Detection{Colors.ENDC}
+{Colors.OKGREEN}        🔍 White-box Security Assessment (On-demand)                   {Colors.ENDC}
 {Colors.WARNING}                    ⚡ Powered by Local AI Analysis ⚡{Colors.ENDC}
 """
     print(banner)
@@ -77,21 +77,13 @@ def display_menu():
   {Colors.BOLD}[5]{Colors.ENDC} 🌐 Network Security Scan       - Port & service analysis
   {Colors.BOLD}[6]{Colors.ENDC} 🛡️  System Hardening Check     - Security hardening status
 
-{Colors.WARNING}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
-{Colors.WARNING}│                      🚨 BLACK-BOX DETECTION                         │{Colors.ENDC}
-{Colors.WARNING}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-  {Colors.BOLD}[7]{Colors.ENDC} 🚨 Real-time Attack Monitor    - 24/7 blackbox tools detection
-  {Colors.BOLD}[8]{Colors.ENDC} 🔍 Single Attack Scan          - One-time attack detection
-  {Colors.BOLD}[9]{Colors.ENDC} ⏱️  Custom Interval Monitor     - Periodic scanning (custom time)
-  {Colors.BOLD}[10]{Colors.ENDC} 📊 Attack Pattern Analysis     - Historical attack analysis
-
 {Colors.OKBLUE}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.OKBLUE}│                       ⚙️ CONFIGURATION & TOOLS                     │{Colors.ENDC}
 {Colors.OKBLUE}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-  {Colors.BOLD}[11]{Colors.ENDC} ⚙️  Setup Configuration         - Configure Telegram & AI
-  {Colors.BOLD}[12]{Colors.ENDC} 🤖 Test AI Connection          - Verify Ollama AI setup
-  {Colors.BOLD}[13]{Colors.ENDC} 📱 Test Telegram Bot           - Verify notification setup
-  {Colors.BOLD}[14]{Colors.ENDC} 📋 View Commands Guide          - Show all available commands
+    {Colors.BOLD}[7]{Colors.ENDC} ⚙️  Setup Configuration         - Configure Telegram & AI
+    {Colors.BOLD}[8]{Colors.ENDC} 🤖 Test AI Connection          - Verify Ollama AI setup
+    {Colors.BOLD}[9]{Colors.ENDC} 📱 Test Telegram Bot           - Verify notification setup
+    {Colors.BOLD}[10]{Colors.ENDC} 📋 View Commands Guide          - Show all available commands
 
 {Colors.HEADER}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.HEADER}│                          🚪 EXIT OPTIONS                            │{Colors.ENDC}
@@ -144,32 +136,6 @@ def execute_choice(choice):
         os.system("python -m checkers.hardening_checker")
         
     elif choice == "7":
-        print_info("🚨 Starting Real-time Attack Monitor...")
-        print_warning("Press Ctrl+C to stop monitoring")
-        os.system("python start_monitoring.py --continuous")
-        
-    elif choice == "8":
-        print_info("🔍 Starting Single Attack Scan...")
-        os.system("python start_monitoring.py --single")
-        
-    elif choice == "9":
-        print_info("⏱️ Starting Custom Interval Monitor...")
-        try:
-            interval = input("Enter interval in seconds (default: 30): ").strip()
-            if not interval:
-                interval = "30"
-            interval = int(interval)
-            print_info(f"Starting monitoring with {interval}s interval...")
-            os.system(f"python start_monitoring.py --interval {interval}")
-        except ValueError:
-            print_warning("Invalid interval, using default 30 seconds")
-            os.system("python start_monitoring.py --interval 30")
-            
-    elif choice == "10":
-        print_info("📊 Starting Attack Pattern Analysis...")
-        os.system("python -m monitoring.security_monitor")
-        
-    elif choice == "11":
         print_info("⚙️ Opening Configuration Setup...")
         if os.name == 'nt':  # Windows
             os.system("notepad .env")
@@ -177,7 +143,7 @@ def execute_choice(choice):
             os.system("nano .env")
         print_info("Configuration saved. Please restart the application.")
         
-    elif choice == "12":
+    elif choice == "8":
         print_info("🤖 Testing AI Connection...")
         try:
             from utils import get_ollama_suggestion
@@ -189,7 +155,7 @@ def execute_choice(choice):
         except Exception as e:
             print_danger(f"❌ AI connection failed: {e}")
             
-    elif choice == "13":
+    elif choice == "9":
         print_info("📱 Testing Telegram Bot...")
         try:
             from utils import send_to_telegram
@@ -198,7 +164,7 @@ def execute_choice(choice):
         except Exception as e:
             print_danger(f"❌ Telegram connection failed: {e}")
             
-    elif choice == "14":
+    elif choice == "10":
         print_info("📋 Opening Commands Guide...")
         if os.name == 'nt':  # Windows
             os.system("type docs\\COMMANDS_GUIDE.md | more")
@@ -210,7 +176,7 @@ def execute_choice(choice):
         sys.exit(0)
         
     else:
-        print_danger("❌ Invalid choice! Please select 0-14")
+        print_danger("❌ Invalid choice! Please select 0-10")
 
 def main():
     """Main interactive CLI function"""
@@ -225,7 +191,7 @@ def main():
             display_menu()
             
             # Get user choice
-            choice = input(f"\n{Colors.BOLD}Pilih opsi [0-14]: {Colors.ENDC}").strip()
+            choice = input(f"\n{Colors.BOLD}Pilih opsi [0-10]: {Colors.ENDC}").strip()
             
             if choice:
                 print(f"\n{Colors.OKBLUE}{'='*75}{Colors.ENDC}")
