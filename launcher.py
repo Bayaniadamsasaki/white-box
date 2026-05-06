@@ -35,12 +35,17 @@ def show_options():
   {Colors.BOLD}[2]{Colors.ENDC} ⚡ Quick Security Check     - Essential security validation
   {Colors.BOLD}[3]{Colors.ENDC} 🔧 Individual Module Check - Specific security component
 
+{Colors.WARNING}┌─ 🎯 BLACK-BOX SECURITY SCANNING ─────────────────────────────────────┐{Colors.ENDC}
+{Colors.WARNING}│  External System Attack Detection                                     │{Colors.ENDC}
+{Colors.WARNING}└───────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
+  {Colors.BOLD}[4]{Colors.ENDC} 🎯 Black-box Single Scan   - Scan logs & processes for attack tools
+
 {Colors.OKBLUE}┌─ ⚙️ CONFIGURATION & HELP ────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.OKBLUE}│  System Configuration, Testing & Documentation                        │{Colors.ENDC}
 {Colors.OKBLUE}└───────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-    {Colors.BOLD}[4]{Colors.ENDC} 🎮 Interactive Menu         - Full featured CLI interface
-    {Colors.BOLD}[5]{Colors.ENDC} ⚙️  Setup & Configuration    - Configure API keys & settings
-    {Colors.BOLD}[6]{Colors.ENDC} 📋 Commands Guide           - Show all available commands
+    {Colors.BOLD}[5]{Colors.ENDC} 🎮 Interactive Menu         - Full featured CLI interface
+    {Colors.BOLD}[6]{Colors.ENDC} ⚙️  Setup & Configuration    - Configure API keys & settings
+    {Colors.BOLD}[7]{Colors.ENDC} 📋 Commands Guide           - Show all available commands
 
   {Colors.BOLD}[0]{Colors.ENDC} 🚪 Exit                     - Exit program
 """)
@@ -59,7 +64,7 @@ def main():
             show_banner()
             show_options()
 
-            choice = input(f"\n{Colors.BOLD}Pilih opsi [0-6]: {Colors.ENDC}").strip()
+            choice = input(f"\n{Colors.BOLD}Pilih opsi [0-7]: {Colors.ENDC}").strip()
 
             print(f"\n{Colors.OKBLUE}{'='*70}{Colors.ENDC}")
 
@@ -123,6 +128,12 @@ def main():
                 continue
 
             if choice == "4":
+                print(f"{Colors.OKGREEN}🎯 Starting Black-box Single Scan...{Colors.ENDC}")
+                os.system("python -m checkers.blackbox_checker")
+                wait_for_return()
+                continue
+
+            if choice == "5":
                 print(f"{Colors.OKBLUE}🎮 Launching Interactive Menu...{Colors.ENDC}")
                 try:
                     from cli_menu import main as interactive_main
@@ -133,7 +144,7 @@ def main():
                 wait_for_return()
                 continue
 
-            if choice == "5":
+            if choice == "6":
                 print(f"{Colors.OKBLUE}⚙️ Opening Configuration Setup...{Colors.ENDC}")
                 if os.name == 'nt':
                     os.system("copy env.example .env & notepad .env")
@@ -143,7 +154,7 @@ def main():
                 wait_for_return()
                 continue
 
-            if choice == "6":
+            if choice == "7":
                 print(f"{Colors.OKBLUE}📋 Opening Commands Guide...{Colors.ENDC}")
                 if os.name == 'nt':
                     os.system("type docs\\COMMANDS_GUIDE.md | more")
@@ -152,7 +163,7 @@ def main():
                 wait_for_return()
                 continue
 
-            print(f"{Colors.FAIL}❌ Invalid choice! Please select 0-6{Colors.ENDC}")
+            print(f"{Colors.FAIL}❌ Invalid choice! Please select 0-7{Colors.ENDC}")
             wait_for_return()
 
         except KeyboardInterrupt:

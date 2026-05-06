@@ -77,13 +77,18 @@ def display_menu():
   {Colors.BOLD}[5]{Colors.ENDC} 🌐 Network Security Scan       - Port & service analysis
   {Colors.BOLD}[6]{Colors.ENDC} 🛡️  System Hardening Check     - Security hardening status
 
+{Colors.WARNING}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
+{Colors.WARNING}│                        🎯 BLACK-BOX SECURITY                        │{Colors.ENDC}
+{Colors.WARNING}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
+  {Colors.BOLD}[7]{Colors.ENDC} 🎯 Black-box Single Scan      - Scan logs & processes for attack tools
+
 {Colors.OKBLUE}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.OKBLUE}│                       ⚙️ CONFIGURATION & TOOLS                     │{Colors.ENDC}
 {Colors.OKBLUE}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-    {Colors.BOLD}[7]{Colors.ENDC} ⚙️  Setup Configuration         - Configure Telegram & AI
-    {Colors.BOLD}[8]{Colors.ENDC} 🤖 Test AI Connection          - Verify Ollama AI setup
-    {Colors.BOLD}[9]{Colors.ENDC} 📱 Test Telegram Bot           - Verify notification setup
-    {Colors.BOLD}[10]{Colors.ENDC} 📋 View Commands Guide          - Show all available commands
+    {Colors.BOLD}[8]{Colors.ENDC} ⚙️  Setup Configuration         - Configure Telegram & AI
+    {Colors.BOLD}[9]{Colors.ENDC} 🤖 Test AI Connection          - Verify Ollama AI setup
+    {Colors.BOLD}[10]{Colors.ENDC} 📱 Test Telegram Bot           - Verify notification setup
+    {Colors.BOLD}[11]{Colors.ENDC} 📋 View Commands Guide          - Show all available commands
 
 {Colors.HEADER}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.HEADER}│                          🚪 EXIT OPTIONS                            │{Colors.ENDC}
@@ -136,6 +141,10 @@ def execute_choice(choice):
         os.system("python -m checkers.hardening_checker")
         
     elif choice == "7":
+        print_info("🎯 Starting Black-box Single Scan...")
+        os.system("python -m checkers.blackbox_checker")
+        
+    elif choice == "8":
         print_info("⚙️ Opening Configuration Setup...")
         if os.name == 'nt':  # Windows
             os.system("notepad .env")
@@ -143,7 +152,7 @@ def execute_choice(choice):
             os.system("nano .env")
         print_info("Configuration saved. Please restart the application.")
         
-    elif choice == "8":
+    elif choice == "9":
         print_info("🤖 Testing AI Connection...")
         try:
             from utils import get_ollama_suggestion
@@ -155,7 +164,7 @@ def execute_choice(choice):
         except Exception as e:
             print_danger(f"❌ AI connection failed: {e}")
             
-    elif choice == "9":
+    elif choice == "10":
         print_info("📱 Testing Telegram Bot...")
         try:
             from utils import send_to_telegram
@@ -164,7 +173,7 @@ def execute_choice(choice):
         except Exception as e:
             print_danger(f"❌ Telegram connection failed: {e}")
             
-    elif choice == "10":
+    elif choice == "11":
         print_info("📋 Opening Commands Guide...")
         if os.name == 'nt':  # Windows
             os.system("type docs\\COMMANDS_GUIDE.md | more")
@@ -176,7 +185,7 @@ def execute_choice(choice):
         sys.exit(0)
         
     else:
-        print_danger("❌ Invalid choice! Please select 0-10")
+        print_danger("❌ Invalid choice! Please select 0-11")
 
 def main():
     """Main interactive CLI function"""
@@ -191,7 +200,7 @@ def main():
             display_menu()
             
             # Get user choice
-            choice = input(f"\n{Colors.BOLD}Pilih opsi [0-10]: {Colors.ENDC}").strip()
+            choice = input(f"\n{Colors.BOLD}Pilih opsi [0-11]: {Colors.ENDC}").strip()
             
             if choice:
                 print(f"\n{Colors.OKBLUE}{'='*75}{Colors.ENDC}")
