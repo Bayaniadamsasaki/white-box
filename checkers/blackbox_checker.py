@@ -45,6 +45,17 @@ class ToolSignatureDetector:
             'nmap': {'patterns': [r'nmap', r'Nmap.*scan', r'SYN.*scan'], 'behavior': 'port_scanning'},
             'paramspider': {'patterns': [r'paramspider', r'User-Agent.*paramspider', r'parameter.*discovery'], 'behavior': 'parameter_discovery'}
         }
+        # Behavioral URL patterns — deteksi Nuclei dari path khas vulnerability scanning
+        self.nuclei_url_patterns = [
+            r'GET /\.env', r'GET /\.git', r'GET /\.idea/', r'GET /\.svn/',
+            r'GET /wp-content/plugins/', r'GET /wp-admin', r'GET /wp-login',
+            r'GET /elfinder', r'GET /squirrelmail', r'GET /phpmyadmin',
+            r'GET /docker-compose', r'GET /\.DS_Store', r'GET /backup',
+            r'GET /admin\.php', r'GET /config\.php', r'GET /server-status',
+            r'GET /actuator', r'GET /api/swagger', r'GET /\.well-known/security',
+            r'GET /cgi-bin/', r'GET /solr/', r'GET /console',
+            r'GET /manager/html', r'GET /jmx-console', r'GET /web-console',
+        ]
         self.severity_mapping = {
             'nmap': 'HIGH', 'nuclei': 'CRITICAL', 'ffuf': 'MEDIUM',
             'katana': 'LOW', 'subfinder': 'LOW', 'paramspider': 'MEDIUM'
@@ -61,6 +72,13 @@ class ToolSignatureDetector:
             for pattern in self.tool_signatures[tool_name]['patterns']:
                 if re.search(pattern, log_lower, re.IGNORECASE):
                     return tool_name
+
+        # Behavioral detection: deteksi Nuclei dari pola URL vulnerability scanning
+        if target_tool is None or target_tool.lower() == 'nuclei':
+            for pattern in self.nuclei_url_patterns:
+                if re.search(pattern, log_entry, re.IGNORECASE):
+                    return 'nuclei'
+
         return None
 
 class SecurityMonitorManager:
