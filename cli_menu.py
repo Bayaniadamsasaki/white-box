@@ -39,10 +39,19 @@ def display_system_info():
         print(f"   🧠 CPU Usage: {psutil.cpu_percent()}%")
         print(f"   📊 Memory Usage: {psutil.virtual_memory().percent}%")
         
+        # Check Telegram config & Load Env
+        from dotenv import load_dotenv
+        load_dotenv()
+        
         # Check AI status
         try:
             import requests
-            response = requests.get("http://localhost:11434/api/tags", timeout=2)
+            ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+            if ollama_url.endswith("/"):
+                api_url = f"{ollama_url}api/tags"
+            else:
+                api_url = f"{ollama_url}/api/tags"
+            response = requests.get(api_url, timeout=2)
             if response.status_code == 200:
                 print(f"   🤖 Ollama AI: {Colors.OKGREEN}ONLINE{Colors.ENDC}")
             else:
@@ -50,9 +59,6 @@ def display_system_info():
         except:
             print(f"   🤖 Ollama AI: {Colors.FAIL}OFFLINE{Colors.ENDC}")
         
-        # Check Telegram config
-        from dotenv import load_dotenv
-        load_dotenv()
         telegram_configured = bool(os.getenv("TELEGRAM_BOT_TOKEN"))
         if telegram_configured:
             print(f"   📱 Telegram: {Colors.OKGREEN}CONFIGURED{Colors.ENDC}")
