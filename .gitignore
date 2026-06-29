@@ -29,6 +29,7 @@ skripsi/
 *.docx
 *.pdf
 *.doc
+/docs
 
 # Temporary files
 *.tmp
