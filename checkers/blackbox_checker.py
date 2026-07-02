@@ -92,7 +92,8 @@ class SecurityMonitorManager:
         log_paths = []
         potential_paths = [
             '/var/log/apache2/access.log', '/var/log/nginx/access.log',
-            '/var/log/auth.log', '/var/log/syslog', '/var/log/httpd/access_log',
+            '/var/log/nginx/error.log', '/var/log/auth.log', '/var/log/syslog',
+            '/var/log/httpd/access_log',
             'C:\\Windows\\System32\\LogFiles\\W3SVC1\\',
             'C:\\inetpub\\logs\\LogFiles\\W3SVC1\\',
             './logs/', './access.log', './error.log'
