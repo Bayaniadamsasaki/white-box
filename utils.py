@@ -134,12 +134,12 @@ def ensure_sudo_access():
 
 class Colors:
     
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
+    HEADER = '\033[35m'      # Dark Magenta (terlihat di bg putih)
+    OKBLUE = '\033[34m'      # Dark Blue
+    OKCYAN = '\033[36m'      # Dark Cyan
+    OKGREEN = '\033[32m'     # Dark Green
+    WARNING = '\033[33m'     # Dark Yellow/Orange
+    FAIL = '\033[31m'        # Dark Red
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'

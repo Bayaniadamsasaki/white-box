@@ -20,7 +20,7 @@ def display_banner():
  ╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚══════╝     ╚══════╝╚══════╝ ╚═════╝
 {Colors.ENDC}
 {Colors.HEADER}{Colors.BOLD}            🛡️  INTEGRATED CYBERSECURITY SCANNER  🛡️{Colors.ENDC}
-{Colors.OKGREEN}        🔍 White-box Security Assessment (On-demand)                   {Colors.ENDC}
+{Colors.OKGREEN}                      👤 Bayani Adam Sasaki — 2201020027                      {Colors.ENDC}
 {Colors.WARNING}                    ⚡ Powered by Local AI Analysis ⚡{Colors.ENDC}
 """
     print(banner)
@@ -77,38 +77,38 @@ def display_menu():
 {Colors.OKGREEN}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.OKGREEN}│                        🔍 WHITE-BOX SECURITY                        │{Colors.ENDC}
 {Colors.OKGREEN}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-  {Colors.BOLD}[1]{Colors.ENDC} ⚡ Quick Security Check        - Essential security validation  
-  {Colors.BOLD}[2]{Colors.ENDC} 🔐 SSH Security Analysis       - SSH configuration assessment
-  {Colors.BOLD}[3]{Colors.ENDC} 👥 User & Permission Audit     - Account security analysis
-  {Colors.BOLD}[4]{Colors.ENDC} 🌐 Network Security Scan       - Port & service analysis
-  {Colors.BOLD}[5]{Colors.ENDC} 🛡️  System Hardening Check     - Security hardening status
+  {Colors.BOLD}[1]{Colors.ENDC}  ⚡ Quick Security Check       - Essential security validation  
+  {Colors.BOLD}[2]{Colors.ENDC}  🔐 SSH Security Analysis      - SSH configuration assessment
+  {Colors.BOLD}[3]{Colors.ENDC}  👥 User & Permission Audit    - Account security analysis
+  {Colors.BOLD}[4]{Colors.ENDC}  🌐 Network Security Scan      - Port & service analysis
+  {Colors.BOLD}[5]{Colors.ENDC}  🛡️  System Hardening Check     - Security hardening status
 
 {Colors.WARNING}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.WARNING}│                        🎯 BLACK-BOX SECURITY                        │{Colors.ENDC}
 {Colors.WARNING}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-  {Colors.BOLD}[6]{Colors.ENDC} 🔍 Detect Nmap            - Scan for Nmap activities
-  {Colors.BOLD}[7]{Colors.ENDC} ☢️  Detect Nuclei          - Scan for Nuclei activities
-  {Colors.BOLD}[8]{Colors.ENDC} 🚀 Detect FFUF           - Scan for FFUF activities
+  {Colors.BOLD}[6]{Colors.ENDC}  🔍 Detect Nmap               - Scan for Nmap activities
+  {Colors.BOLD}[7]{Colors.ENDC}  ☢️  Detect Nuclei             - Scan for Nuclei activities
+  {Colors.BOLD}[8]{Colors.ENDC}  🚀 Detect FFUF               - Scan for FFUF activities
 
 {Colors.OKBLUE}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
-{Colors.OKBLUE}│                       ⚙️ CONFIGURATION & TOOLS                     │{Colors.ENDC}
+{Colors.OKBLUE}│                       ⚙️ CONFIGURATION & TOOLS                       │{Colors.ENDC}
 {Colors.OKBLUE}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-    {Colors.BOLD}[9]{Colors.ENDC} ⚙️  Setup Configuration    - Configure Telegram & AI
-    {Colors.BOLD}[10]{Colors.ENDC} 🤖 Test AI Connection     - Verify Ollama AI setup
-    {Colors.BOLD}[11]{Colors.ENDC} 📱 Test Telegram Bot      - Verify notification setup
-    {Colors.BOLD}[12]{Colors.ENDC} 📋 View Commands Guide     - Show all available commands
+  {Colors.BOLD}[9]{Colors.ENDC}  ⚙️  Setup Configuration       - Configure Telegram & AI
+  {Colors.BOLD}[10]{Colors.ENDC} 🤖 Test AI Connection        - Verify Ollama AI setup
+  {Colors.BOLD}[11]{Colors.ENDC} 📱 Test Telegram Bot         - Verify notification setup
+  {Colors.BOLD}[12]{Colors.ENDC} 📋 View Commands Guide       - Show all available commands
     
 {Colors.HEADER}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.HEADER}│                        👀 SERVER LOG MONITORING                     │{Colors.ENDC}
 {Colors.HEADER}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-    {Colors.BOLD}[13]{Colors.ENDC} 📜 Tail Nginx Access Log  - View real-time web access
-    {Colors.BOLD}[14]{Colors.ENDC} 📜 Tail Nginx Error Log   - View real-time web errors
-    {Colors.BOLD}[15]{Colors.ENDC} 📜 Tail Auth Log          - View real-time SSH logins
+  {Colors.BOLD}[13]{Colors.ENDC} 📜 Tail Nginx Access Log     - View real-time web access
+  {Colors.BOLD}[14]{Colors.ENDC} 📜 Tail Nginx Error Log      - View real-time web errors
+  {Colors.BOLD}[15]{Colors.ENDC} 📜 Tail Auth Log             - View real-time SSH logins
 
 {Colors.HEADER}┌─────────────────────────────────────────────────────────────────────┐{Colors.ENDC}
 {Colors.HEADER}│                          🚪 EXIT OPTIONS                            │{Colors.ENDC}
 {Colors.HEADER}└─────────────────────────────────────────────────────────────────────┘{Colors.ENDC}
-  {Colors.BOLD}[0]{Colors.ENDC} 🚪 Exit Program                - Keluar dari aplikasi
+  {Colors.BOLD}[0]{Colors.ENDC}  🚪 Exit Program              - Keluar dari aplikasi
 """)
 
 def execute_choice(choice):
