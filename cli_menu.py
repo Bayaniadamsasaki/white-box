@@ -34,7 +34,30 @@ def display_system_info():
         import platform
         import psutil
         
-        print(f"   🖥️  OS: {platform.system()} {platform.release()}")
+        # Deteksi nama OS secara spesifik (Ubuntu Server, bukan hanya "Linux")
+        os_name = platform.system()
+        if os_name == "Linux":
+            try:
+                os_release = platform.freedesktop_os_release()
+                os_display = os_release.get("PRETTY_NAME", f"Linux {platform.release()}")
+            except (AttributeError, OSError):
+                # Fallback: baca /etc/os-release secara manual
+                try:
+                    with open("/etc/os-release") as f:
+                        for line in f:
+                            if line.startswith("PRETTY_NAME="):
+                                os_display = line.strip().split("=", 1)[1].strip('"')
+                                break
+                        else:
+                            os_display = f"Linux {platform.release()}"
+                except FileNotFoundError:
+                    os_display = f"Linux {platform.release()}"
+        elif os_name == "Windows":
+            os_display = f"Windows {platform.version()}"
+        else:
+            os_display = f"{os_name} {platform.release()}"
+        
+        print(f"   🖥️  OS: {os_display}")
         print(f"   💻 Architecture: {platform.machine()}")
         print(f"   🧠 CPU Usage: {psutil.cpu_percent()}%")
         print(f"   📊 Memory Usage: {psutil.virtual_memory().percent}%")
