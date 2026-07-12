@@ -19,9 +19,9 @@ def display_banner():
  ██║ ╚████║╚██████╔╝███████╗███████╗     ███████║███████╗╚██████╗
  ╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚══════╝     ╚══════╝╚══════╝ ╚═════╝
 {Colors.ENDC}
-{Colors.HEADER}{Colors.BOLD}            🛡️  INTEGRATED CYBERSECURITY SCANNER  🛡️{Colors.ENDC}
-{Colors.OKGREEN}                      👤 Bayani Adam Sasaki — 2201020027                      {Colors.ENDC}
-{Colors.WARNING}                    ⚡ Powered by Local AI Analysis ⚡{Colors.ENDC}
+{Colors.HEADER}{Colors.BOLD}            🛡️  INTEGRATED CYBERSECURITY SCANNER {Colors.ENDC}
+{Colors.OKGREEN}            👤 Bayani Adam Sasaki — 2201020027                      {Colors.ENDC}
+{Colors.WARNING}            ⚡ Powered by Local AI Analysis ⚡{Colors.ENDC}
 """
     print(banner)
 
