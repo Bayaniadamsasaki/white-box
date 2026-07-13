@@ -28,7 +28,6 @@ def display_banner():
 def display_system_info():
     """Display system information"""
     print(f"{Colors.OKBLUE}{'='*75}{Colors.ENDC}")
-    print(f"{Colors.BOLD}📊 SYSTEM INFO:{Colors.ENDC}")
     
     try:
         import platform
@@ -57,16 +56,16 @@ def display_system_info():
         else:
             os_display = f"{os_name} {platform.release()}"
         
-        print(f"   🖥️  OS: {os_display}")
-        print(f"   💻 Architecture: {platform.machine()}")
-        print(f"   🧠 CPU Usage: {psutil.cpu_percent()}%")
-        print(f"   📊 Memory Usage: {psutil.virtual_memory().percent}%")
+        cpu = psutil.cpu_percent()
+        mem = psutil.virtual_memory().percent
+        arch = platform.machine()
         
         # Check Telegram config & Load Env
         from dotenv import load_dotenv
         load_dotenv()
         
         # Check AI status
+        ai_status = f"{Colors.FAIL}OFFLINE{Colors.ENDC}"
         try:
             import requests
             ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -76,20 +75,21 @@ def display_system_info():
                 api_url = f"{ollama_url}/api/tags"
             response = requests.get(api_url, timeout=2)
             if response.status_code == 200:
-                print(f"   🤖 Ollama AI: {Colors.OKGREEN}ONLINE{Colors.ENDC}")
+                ai_status = f"{Colors.OKGREEN}ONLINE{Colors.ENDC}"
             else:
-                print(f"   🤖 Ollama AI: {Colors.WARNING}OFFLINE{Colors.ENDC}")
+                ai_status = f"{Colors.WARNING}OFFLINE{Colors.ENDC}"
         except:
-            print(f"   🤖 Ollama AI: {Colors.FAIL}OFFLINE{Colors.ENDC}")
+            pass
         
         telegram_configured = bool(os.getenv("TELEGRAM_BOT_TOKEN"))
-        if telegram_configured:
-            print(f"   📱 Telegram: {Colors.OKGREEN}CONFIGURED{Colors.ENDC}")
-        else:
-            print(f"   📱 Telegram: {Colors.WARNING}NOT CONFIGURED{Colors.ENDC}")
+        tg_status = f"{Colors.OKGREEN}OK{Colors.ENDC}" if telegram_configured else f"{Colors.WARNING}NO{Colors.ENDC}"
+        
+        # Tampilan horizontal 2 baris
+        print(f" 🖥️  OS: {Colors.BOLD}{os_display}{Colors.ENDC}  |  💻 Arch: {arch}  |  🧠 CPU: {cpu}%")
+        print(f" 📊 RAM: {mem}%  |  🤖 Ollama: {ai_status}  |  📱 Telegram: {tg_status}")
             
     except Exception as e:
-        print(f"   ⚠️  System info unavailable: {e}")
+        print(f" ⚠️  System info unavailable: {e}")
     
     print(f"{Colors.OKBLUE}{'='*75}{Colors.ENDC}")
 
