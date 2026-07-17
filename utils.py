@@ -371,7 +371,10 @@ def _normalize_ai_status_in_text(suggestion_text, raw_output):
     for idx, line in enumerate(lines):
         if line.strip().lower().startswith("status:"):
             status_value = line.split(":", 1)[1].strip() if ":" in line else ""
-            lines[idx] = f"Status: {_normalize_status_level(status_value, fallback_level)}"
+            ai_status = _normalize_status_level(status_value, fallback_level)
+            # Selalu gunakan tingkat risiko maksimum antara hasil analisis AI dan rule-based fallback
+            final_status = _max_risk_level(ai_status, fallback_level)
+            lines[idx] = f"Status: {final_status}"
             status_found = True
             break
 
@@ -731,7 +734,7 @@ def get_ollama_suggestion(test_name, raw_output):
     prompt = f"""Analisis keamanan: {test_name}
 
 Data:
-{raw_output[:300]}
+{raw_output[:1500]}
 
 Jawab dengan format:
 Status: LOW/MEDIUM/HIGH/CRITICAL
