@@ -341,25 +341,54 @@ def _normalize_status_level(status_text, fallback="MEDIUM"):
 
 def _infer_risk_level(raw_output):
     text = (raw_output or "").lower()
+    lines = text.splitlines()
+    
+    has_critical = False
+    has_high = False
+    has_medium = False
+    
+    for line in lines:
+        line = line.strip()
+        # Abaikan baris deskripsi tes, perintah, atau judul modul untuk mencegah pencocokan palsu
+        if line.startswith("test:") or "cmd:" in line or "memulai:" in line:
+            continue
+            
+        # Pengecekan CRITICAL
+        critical_indicators = [
+            "uid 0 selain root", "ditemukan pengguna selain 'root' dengan uid 0", 
+            "backdoor", "remote code execution", "privilege escalation", 
+            "unauthorized root", "nuclei", "critical vulnerability"
+        ]
+        if any(p in line for p in critical_indicators):
+            has_critical = True
+        if "password kosong" in line and ("ditemukan" in line or "peringatan" in line or line.startswith("[-]") or line.startswith("[!]")):
+            has_critical = True
+        if "world-writable" in line and ("ditemukan" in line or line.startswith("[-]") or line.startswith("[!]")):
+            has_critical = True
+            
+        # Pengecekan HIGH
+        high_indicators = [
+            "brute force", "failed login", "permitrootlogin yes", 
+            "passwordauthentication yes", "auditd tidak aktif", 
+            "selinux disabled", "apparmor disabled", "risiko keamanan serius", "nmap"
+        ]
+        if any(p in line for p in high_indicators):
+            has_high = True
+            
+        # Pengecekan MEDIUM
+        medium_indicators = [
+            "open port", "listening", "banner ssh", "ftp anonim", 
+            "warning", "outdated", "error", "failed", "refused", 
+            "timeout", "not found", "tidak aktif", "ffuf", "paramspider"
+        ]
+        if any(p in line for p in medium_indicators):
+            has_medium = True
 
-    critical_patterns = [
-        "password kosong", "uid 0", "critical vulnerability", "remote code execution",
-        "privilege escalation", "unauthorized root", "world-writable"
-    ]
-    high_patterns = [
-        "brute force", "failed login", "permitrootlogin yes", "passwordauthentication yes",
-        "auditd tidak aktif", "selinux disabled", "apparmor disabled", "risiko keamanan serius"
-    ]
-    medium_patterns = [
-        "open port", "listening", "banner ssh", "ftp anonim", "warning", "outdated",
-        "error", "failed", "refused", "timeout", "not found", "tidak aktif"
-    ]
-
-    if any(p in text for p in critical_patterns):
+    if has_critical:
         return "CRITICAL"
-    if any(p in text for p in high_patterns):
+    if has_high:
         return "HIGH"
-    if any(p in text for p in medium_patterns):
+    if has_medium:
         return "MEDIUM"
     return "LOW"
 
